@@ -1,0 +1,49 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "company-brain",
+	"main": "src/worker.ts",
+	"compatibility_date": "2025-06-22",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"nodejs_compat_populate_process_env",
+		"enable_ctx_exports"
+	],
+	"minify": true,
+	"observability": { "enabled": true },
+	"ai": { "binding": "AI" },
+	"version_metadata": { "binding": "CF_VERSION_METADATA" },
+	"worker_loaders": [{ "binding": "LOADER" }],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "company-brain",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"kv_namespaces": [{ "binding": "BRAIN_KV", "id": "company_brain_kv" }],
+	"durable_objects": {
+		"bindings": [
+			{ "name": "COMPANY_BRAIN_AGENT", "class_name": "CompanyBrainAgent" }
+		]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["CompanyBrainAgent"] }
+	],
+	"unsafe": {
+		"bindings": [
+			{
+				"type": "ratelimit",
+				"name": "GMAIL_FETCH_RATE_LIMITER",
+				"namespace_id": "1101",
+				"simple": { "limit": 150, "period": 10 }
+			},
+			{
+				"type": "ratelimit",
+				"name": "GRANOLA_FETCH_RATE_LIMITER",
+				"namespace_id": "1102",
+				"simple": { "limit": 25, "period": 10 }
+			}
+		]
+	}
+}

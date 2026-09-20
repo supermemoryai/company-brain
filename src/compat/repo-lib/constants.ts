@@ -1,0 +1,1 @@
+export const MAX_WORKSPACE_PROMPT_LENGTH = 1_500

@@ -1,0 +1,31 @@
+/** Secrets, declared here because wrangler only generates types for bindings. */
+interface Env {
+	SUPERMEMORY_API_KEY: string
+	ANTHROPIC_API_KEY?: string
+	OPENAI_API_KEY?: string
+	GOOGLE_GENERATIVE_AI_API_KEY?: string
+	XAI_API_KEY?: string
+	DAYTONA_API_KEY?: string
+	/** Public origin of this worker, used for OAuth redirects and Slack links. */
+	PUBLIC_URL?: string
+	/** Slack app credentials, captured by the setup wizard and stored in D1. */
+	SLACK_CLIENT_ID?: string
+	SLACK_CLIENT_SECRET?: string
+	SLACK_SIGNING_SECRET?: string
+	/** Derived at first boot and kept in KV; encrypts tokens at rest. */
+	ENCRYPTION_SECRET?: string
+}
+
+/** Optional Cloudflare AI Gateway. When set, model calls route through it. */
+interface Env {
+	CLOUDFLARE_ACCOUNT_ID?: string
+	AI_GATEWAY_NAME?: string
+	AI_GATEWAY_TOKEN?: string
+}
+
+interface Env {
+	/** Single-workspace bot token, for running without the OAuth install flow. */
+	SLACK_BOT_TOKEN?: string
+	/** Where account-link URLs point. Defaults to this worker. */
+	CONSUMER_APP_URL?: string
+}

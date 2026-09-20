@@ -1,0 +1,219 @@
+/**
+ * Company Brain Durable Object, split out of the main `supermemory` worker.
+ * A Durable Object shares memory with the worker that defines it, so hosting the
+ * class here keeps the HTTP routes and their libraries out of its 128MB budget.
+ *
+ * Deploy order matters: see docs/company-brain/do-split-runbook.md
+ *
+ * Keep `secrets.required`, `define`, `alias` and `compatibility_flags` in sync
+ * with wrangler.jsonc; secrets not listed here never reach this worker.
+ * Values are provisioned by `bun run secrets:sync:brain`
+ * (dotenvx decrypt of `.env.production` → `wrangler secret bulk -c wrangler.brain.jsonc`).
+ * Keep that sync out of `deploy:brain` — Workers Builds runs that script without
+ * the dotenvx private key.
+ */
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "supermemory-brain",
+	"main": "worker-brain.ts",
+	"compatibility_date": "2025-06-22",
+	"define": {
+		"__SELF_HOSTED_BUILD__": "false",
+		"process.env.SELF_HOSTED": "\"false\""
+	},
+	"alias": {
+		"./src/config/defaults.self-hosted": "./src/config/defaults.self-hosted.cloud-stub.ts",
+		"@/local-extras": "./src/local-extras.cloud-stub.ts",
+		"@/lib/self-hosted-file-store-global": "./src/lib/self-hosted-file-store-global.cloud-stub.ts"
+	},
+	"compatibility_flags": [
+		"nodejs_compat",
+		"nodejs_compat_populate_process_env",
+		"global_fetch_strictly_public",
+		"enable_ctx_exports"
+	],
+	"minify": true,
+	"ai": {
+		"binding": "AI"
+	},
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
+	"worker_loaders": [
+		{
+			"binding": "LOADER"
+		}
+	],
+	"unsafe": {
+		"bindings": [
+			{
+				"type": "ratelimit",
+				"name": "GMAIL_FETCH_RATE_LIMITER",
+				"namespace_id": "1101",
+				"simple": {
+					"limit": 150,
+					"period": 10
+				}
+			},
+			{
+				"type": "ratelimit",
+				"name": "GRANOLA_FETCH_RATE_LIMITER",
+				"namespace_id": "1102",
+				"simple": {
+					"limit": 25,
+					"period": 10
+				}
+			}
+		]
+	},
+	"secrets": {
+		"required": [
+			"FRONTEND_URL",
+			"BETTER_AUTH_SECRET",
+			"BETTER_AUTH_URL",
+			"AUTH_GITHUB_ID",
+			"AUTH_GITHUB_SECRET",
+			"AUTH_GOOGLE_ID",
+			"AUTH_GOOGLE_SECRET",
+			"AGENTID_CLIENT_ID",
+			"AGENTID_CLIENT_SECRET",
+			"GOOGLE_CLIENT_ID",
+			"GOOGLE_CLIENT_SECRET",
+			"MICROSOFT_CLIENT_ID",
+			"MICROSOFT_CLIENT_SECRET",
+			"NOTION_CLIENT_ID",
+			"NOTION_CLIENT_SECRET",
+			"NOTION_WEBHOOK_SECRET",
+			"SLACK_CLIENT_ID",
+			"SLACK_CLIENT_SECRET",
+			"GITHUB_CLIENT_ID",
+			"GITHUB_CLIENT_SECRET",
+			"CLOUDFLARE_ACCOUNT_ID",
+			"CLOUDFLARE_AI_GATEWAY_NAME",
+			"CLOUDFLARE_AI_GATEWAY_TOKEN",
+			"COMPANY_BRAIN_AI_GATEWAY_NAME",
+			"COMPANY_BRAIN_AI_GATEWAY_TOKEN",
+			"GROQ_API_KEY",
+			"OPENAI_API_KEY",
+			"GOOGLE_VERTEX_PROJECT_ID",
+			"GOOGLE_VERTEX_LOCATION",
+			"GOOGLE_CLIENT_EMAIL",
+			"GOOGLE_PRIVATE_KEY",
+			"GEMINI_API_KEY",
+			"ANTHROPIC_API_KEY",
+			"WORKERS_AI_API_KEY",
+			"XAI_API_KEY",
+			"MISTRAL_API_KEY",
+			"JINA_API_KEY",
+			"FIRECRAWL_API_KEY",
+			"CONTEXT_DEV_API_KEY",
+			"CF_BROWSER_RENDERING_API_KEY",
+			"TURBOPUFFER_API_KEY",
+			"R2_ENDPOINT",
+			"R2_ACCESS_KEY_ID",
+			"R2_SECRET_ACCESS_KEY",
+			"R2_BUCKET_NAME",
+			"AUTUMN_SECRET_KEY",
+			"AUTOSEND_API_KEY",
+			"DAYTONA_API_KEY",
+			"COMPANY_BRAIN_GOOGLE_WORKSPACE_CLIENT_ID",
+			"COMPANY_BRAIN_GOOGLE_WORKSPACE_CLIENT_SECRET"
+		]
+	},
+	"kv_namespaces": [
+		{
+			"binding": "AUTH_KV",
+			"id": "e82a921ab5084925974594a15825dd59"
+		}
+	],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "e834b84b92604053a04037539cc1560e",
+			"localConnectionString": "postgresql://postgres:p@0.0.0.0:5435/supermemory"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "CompanyBrainAgent",
+				"name": "COMPANY_BRAIN_AGENT"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "transfer-company-brain-agent",
+			"transferred_classes": [
+				{
+					"from": "CompanyBrainAgent",
+					"from_script": "supermemory",
+					"to": "CompanyBrainAgent"
+				}
+			]
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"traces": {
+			"enabled": true,
+			"destinations": ["sentry-traces"]
+		}
+	},
+	"placement": {
+		"region": "aws:us-east-1"
+	},
+	"limits": {
+		"subrequests": 10000000,
+		"cpu_ms": 300000
+	},
+	"upload_source_maps": true,
+	"previews": {
+		"define": {
+			"__SELF_HOSTED_BUILD__": "false",
+			"process.env.SELF_HOSTED": "\"false\""
+		},
+		"ai": {
+			"binding": "AI"
+		},
+		"version_metadata": {
+			"binding": "CF_VERSION_METADATA"
+		},
+		"worker_loaders": [
+			{
+				"binding": "LOADER"
+			}
+		],
+		"kv_namespaces": [
+			{
+				"binding": "AUTH_KV",
+				"id": "7f84b3d83e534e069a21ecfef6cd5c3e"
+			}
+		],
+		"hyperdrive": [
+			{
+				"binding": "HYPERDRIVE",
+				"id": "11aecd8b594f4bd6a940c423279b85da"
+			}
+		],
+		"durable_objects": {
+			"bindings": [
+				{
+					"class_name": "CompanyBrainAgent",
+					"name": "COMPANY_BRAIN_AGENT"
+				}
+			]
+		},
+		"observability": {
+			"enabled": true,
+			"traces": {
+				"enabled": true,
+				"destinations": ["sentry-traces"]
+			}
+		},
+		"limits": {
+			"subrequests": 10000000,
+			"cpu_ms": 300000
+		}
+	}
+}

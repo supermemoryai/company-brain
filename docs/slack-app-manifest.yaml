@@ -1,0 +1,86 @@
+# Slack app manifest for a personal Company Brain dev app.
+# Mirror of the prod app manifest, with dev URLs and naming.
+# Usage: https://api.slack.com/apps -> Create New App -> From a manifest -> pick your
+# sandbox workspace -> paste this file. See docs/company-brain/local-dev.md.
+#
+# Before pasting, replace:
+#   YOUR-TUNNEL.ngrok-free.app  -> your public tunnel hostname (Slack server -> your machine)
+#   yourname                    -> your name, so apps are tellable apart
+display_information:
+  name: supermemory-dev-yourname
+  description: Supermemory Company Brain, local development
+  background_color: "#000b36"
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: supermemory-dev
+    always_online: true
+  agent_view:
+    agent_description: Super agent with all the context of a company
+    suggested_prompts: []
+oauth_config:
+  # Browser redirect, so the local-only portless hostname works here.
+  redirect_urls:
+    - https://api.dev.supermemory.ai/brain/slack/oauth/callback
+  scopes:
+    # Read-only: every extra scope is another line on each person's consent screen.
+    user:
+      - canvases:read
+      - channels:history
+      - files:read
+      - groups:history
+      - groups:read
+      - im:history
+      - mpim:history
+      - mpim:read
+      - search:read.files
+      - search:read.im
+      - search:read.mpim
+      - search:read.private
+      - search:read.public
+    # Must stay in sync with SLACK_SCOPES in apps/api/src/routes/brain/slack/index.ts.
+    bot:
+      - app_mentions:read
+      - assistant:write
+      - channels:history
+      - channels:join
+      - channels:manage
+      - channels:read
+      - channels:write.invites
+      - chat:write
+      - files:read
+      - files:write
+      - groups:history
+      - groups:read
+      - im:history
+      - im:write
+      - reactions:read
+      - reactions:write
+      - team:read
+      - usergroups:read
+      - users:read
+      - users:read.email
+  pkce_enabled: false
+settings:
+  event_subscriptions:
+    # Server-to-server POST from Slack, must be your public tunnel.
+    request_url: https://YOUR-TUNNEL.ngrok-free.app/brain/slack/events
+    bot_events:
+      - app_mention
+      - message.channels
+      - message.groups
+      - message.im
+      - reaction_added
+      - reaction_removed
+      - team_join
+      - user_change
+  interactivity:
+    is_enabled: true
+    request_url: https://YOUR-TUNNEL.ngrok-free.app/brain/slack/interactions
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+  is_mcp_enabled: true

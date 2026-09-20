@@ -1,0 +1,14 @@
+# ── Required ──────────────────────────────────────────────────────────────────
+# Your supermemory API key — this is where the brain reads and writes memory.
+# Get one at https://console.supermemory.ai
+SUPERMEMORY_API_KEY=""
+
+# One model provider key. Set whichever you have; the brain picks the first one
+# it finds. Anthropic is the default and what the prompts were tuned against.
+ANTHROPIC_API_KEY=""
+OPENAI_API_KEY=""
+GOOGLE_GENERATIVE_AI_API_KEY=""
+
+# ── Optional ──────────────────────────────────────────────────────────────────
+# Sandbox tools (code execution). Tools stay hidden when this is unset.
+DAYTONA_API_KEY=""

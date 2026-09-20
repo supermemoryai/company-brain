@@ -1,0 +1,33 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["ES2022"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"types": ["./worker-configuration.d.ts"],
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"jsx": "react-jsx",
+		"baseUrl": ".",
+		"paths": {
+			"@/lib/brain/*": ["./src/brain/*"],
+			"@/routes/brain/*": ["./src/routes/*"],
+			"@/config": ["./src/config/index.ts"],
+			"@/types": ["./src/types.ts"],
+			"@/lib/*": ["./src/compat/lib/*"],
+			"@/services/*": ["./src/compat/services/*"],
+			"@/routes/*": ["./src/compat/routes/*"],
+			"@repo/db": ["./src/db/index.ts"],
+			"@repo/db/schema": ["./src/db/schema/index.ts"],
+			"@repo/db/schema/*": ["./src/db/schema/*"],
+			"@repo/lib/*": ["./src/compat/repo-lib/*"],
+			"@repo/validation/*": ["./src/compat/validation/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "worker-configuration.d.ts", "env-supplement.d.ts"]
+}
