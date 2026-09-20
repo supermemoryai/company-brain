@@ -1,4 +1,4 @@
-import { db, eq, sql } from "@repo/db"
+import { db, eq, sql, withTransaction } from "@repo/db"
 import * as schema from "@repo/db/schema"
 import { orgMetadataAsJsonb } from "@/lib/org-metadata-sql"
 import { isRecord } from "../turn/util"
@@ -20,12 +20,11 @@ export async function updateBrainModels(
 	orgId: string,
 	patch: BrainModelsPatch,
 ): Promise<Record<string, unknown> | null> {
-	return db(env).transaction(async (tx) => {
+	return withTransaction(db(env), async (tx) => {
 		const [row] = await tx
 			.select({ metadata: schema.organization.metadata })
 			.from(schema.organization)
 			.where(eq(schema.organization.id, orgId))
-			.for("update")
 		if (!row) return null
 
 		const merged: Record<string, unknown> =

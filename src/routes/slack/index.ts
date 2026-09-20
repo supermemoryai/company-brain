@@ -147,14 +147,6 @@ function callbackUrl(env: Env): string {
 	return `${(env.PUBLIC_URL ?? "").replace(/\/$/, "")}/brain/slack/oauth/callback`
 }
 
-function readBrainTrialStartedAt(metadata: unknown): number | undefined {
-	if (!metadata || typeof metadata !== "object") return undefined
-	const started = (metadata as Record<string, unknown>).brainTrialStartedAt
-	if (typeof started !== "string") return undefined
-	const ms = Date.parse(started)
-	return Number.isFinite(ms) ? ms : undefined
-}
-
 function logSlackEvent(
 	msg: string,
 	event: SlackEventInner,
@@ -1240,33 +1232,6 @@ export const slackRoutes = new Hono<AppContext>()
 					.from(organization)
 					.where(eq(organization.id, orgId))
 					.limit(1)
-
-				const { syncBillingStateNow } = await import(
-					"@/lib/payments/billing-state"
-				)
-				await syncBillingStateNow(c.env, orgId).catch((error) => {
-					console.warn(
-						`[slack] billing state sync failed org=${orgId}:`,
-						error instanceof Error ? error.message : error,
-					)
-				})
-
-				const { posthog } = await import("@/lib/posthog")
-				await posthog.brainSlackInstalled({
-					userId,
-					orgId,
-					teamId: oauth.teamId,
-				})
-
-				const trialStartedAtMs = readBrainTrialStartedAt(orgRow?.metadata)
-				if (oauth.authedUserId && trialStartedAtMs) {
-					const agent = await getAgentByName(c.env.COMPANY_BRAIN_AGENT, orgId)
-					await agent.armCompanyBrainTrialReminders({
-						teamId: oauth.teamId,
-						installerSlackUserId: oauth.authedUserId,
-						trialStartedAtMs,
-					})
-				}
 
 				await bootstrapSlackWorkspace(c.env, {
 					orgId,

@@ -1,4 +1,4 @@
-import { db, eq } from "@repo/db"
+import { db, eq, withTransaction } from "@repo/db"
 import * as schema from "@repo/db/schema"
 import type {
 	BrainChannelProactivity,
@@ -25,7 +25,7 @@ export async function updateBrainProactivity(
 	orgId: string,
 	patch: ProactivityPatch | null,
 ): Promise<ProactivityUpdateResult> {
-	return db(env).transaction(async (tx) => {
+	return withTransaction(db(env), async (tx) => {
 		// FOR UPDATE locks nothing on a missing row; insert first so writes serialize
 		await tx
 			.insert(schema.organizationSettings)
@@ -37,7 +37,6 @@ export async function updateBrainProactivity(
 			})
 			.from(schema.organizationSettings)
 			.where(eq(schema.organizationSettings.orgId, orgId))
-			.for("update")
 
 		let merged: BrainProactivitySettings | null = null
 		if (patch != null) {

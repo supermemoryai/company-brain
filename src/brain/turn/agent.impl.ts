@@ -427,10 +427,6 @@ export {
 	runPublicChannelRollout,
 	startPublicChannelRollout,
 } from "../slack/public-channel-rollout"
-export {
-	armCompanyBrainTrialReminders,
-	runCompanyBrainTrialReminder,
-} from "../slack/trial-reminders"
 export { getHomeChannel, setHomeChannel } from "./home-channel"
 export { armInstallNudge, runInstallNudge } from "./install-nudge"
 export { announceResearchIfDone } from "./research-announce"

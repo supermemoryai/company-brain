@@ -1,5 +1,12 @@
 import * as Effect from "effect/Effect"
+import {
+	DocumentUpsertError,
+	InvalidDocumentParametersError,
+	QuotaExceededError,
+	SpaceCreationError,
+} from "@/services/errors"
 import { VectorDBService } from "../../services/vectordb"
+import type { BatchItemResult } from "./helpers"
 
 export type AddMemorySingleParams = {
 	org: { id: string; name?: string; metadata?: unknown }
@@ -10,46 +17,82 @@ export type AddMemorySingleParams = {
 	isFullReplace?: boolean
 	/** Keep brain tags already on the document instead of re-deriving them. */
 	preserveBrainTags?: boolean
-	dreaming?: boolean
+	/** "instant" asks supermemory to extract memories without waiting. */
+	dreaming?: string | boolean
 	requestParams: {
 		content: string
 		customId?: string
 		containerTag?: string
 		containerTags?: string[]
-		metadata?: Record<string, string | number | boolean | null>
+		metadata?: Record<string, string | number | boolean | string[] | null>
 	}
+}
+
+/** supermemory takes scalar metadata; arrays travel as comma-joined strings. */
+function flattenMetadata(
+	metadata: AddMemorySingleParams["requestParams"]["metadata"],
+): Record<string, string | number | boolean> | undefined {
+	if (!metadata) return undefined
+	const flat: Record<string, string | number | boolean> = {}
+	for (const [key, value] of Object.entries(metadata)) {
+		if (value === null || value === undefined) continue
+		flat[key] = Array.isArray(value) ? value.join(",") : value
+	}
+	return flat
 }
 
 /**
  * Write one document into supermemory. Extraction, chunking and embedding all
- * happen server-side, so this is a single API call wrapped as an Effect to keep
- * the original call sites intact.
+ * happen server-side, so this is a single API call wrapped as an Effect so the
+ * original call sites and their error handling stay intact.
  */
 export function addMemorySingle(
 	params: AddMemorySingleParams,
-): Effect.Effect<{ id: string }, Error, VectorDBService> {
+): Effect.Effect<
+	BatchItemResult,
+	| InvalidDocumentParametersError
+	| DocumentUpsertError
+	// Raised by the hosted ingest path, never here; kept in the channel so
+	// callers can keep handling them.
+	| QuotaExceededError
+	| SpaceCreationError,
+	VectorDBService
+> {
 	return Effect.gen(function* () {
 		const client = yield* VectorDBService
 		const { requestParams } = params
 		const containerTags =
 			requestParams.containerTags ??
 			(requestParams.containerTag ? [requestParams.containerTag] : undefined)
+
+		if (!requestParams.content?.trim()) {
+			return yield* Effect.fail(
+				new InvalidDocumentParametersError({
+					message: "content is empty",
+				}),
+			)
+		}
+
 		return yield* Effect.tryPromise({
-			try: async () => {
+			try: async (): Promise<BatchItemResult> => {
 				const result = await client.documents.add({
 					content: requestParams.content,
 					...(requestParams.customId
 						? { customId: requestParams.customId }
 						: {}),
 					...(containerTags ? { containerTags } : {}),
-					...(requestParams.metadata
-						? { metadata: requestParams.metadata }
+					...(flattenMetadata(requestParams.metadata)
+						? { metadata: flattenMetadata(requestParams.metadata) }
 						: {}),
 				})
-				return { id: result.id }
+				return { id: result.id, status: result.status ?? "queued" }
 			},
 			catch: (error) =>
-				error instanceof Error ? error : new Error(String(error)),
+				new DocumentUpsertError({
+					orgId: params.org.id,
+					message: error instanceof Error ? error.message : String(error),
+					cause: error,
+				}),
 		})
 	})
 }

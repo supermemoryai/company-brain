@@ -1,6 +1,5 @@
-import { and, db, desc, eq, inArray, sql } from "@repo/db"
-import { memoryEntry, space } from "@repo/db/schema/spaces"
 import { captureException } from "@/lib/capture"
+import { listBrainMemories } from "../../memory/memories"
 import { brainAgent, type CompanyBrainAgent } from "../turn/agent"
 import { resolveBrainReadContainerTags } from "./read-scope"
 import {
@@ -75,78 +74,41 @@ export async function buildAmbientBrainProfileContext(
 		const channelTag = input.scope?.channelId
 			? channelBrainTagKey(input.scope.channelId)
 			: null
-		const baseConditions = and(
-			eq(space.orgId, input.orgId),
-			inArray(space.containerTag, containers),
-			eq(memoryEntry.isLatest, true),
-			eq(memoryEntry.isForgotten, false),
-			sql`(${memoryEntry.forgetAfter} IS NULL OR ${memoryEntry.forgetAfter} > now())`,
-		)
-		const [staticRows, channelRows, ...personRows] = await Promise.all([
-			db(env)
-				.select({ memory: memoryEntry.memory, buckets: memoryEntry.buckets })
-				.from(memoryEntry)
-				.innerJoin(space, eq(memoryEntry.spaceId, space.id))
-				.where(
-					and(
-						baseConditions,
-						eq(memoryEntry.isStatic, true),
-						sql`jsonb_typeof(COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}) = 'array'`,
-						sql`jsonb_array_length(COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}) > 0`,
-						sql`NOT EXISTS (
-							SELECT 1
-							FROM jsonb_array_elements_text(
-								CASE
-									WHEN jsonb_typeof(COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}) = 'array'
-									THEN COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}
-									ELSE '[]'::jsonb
-								END
-							) AS brain_tag
-							WHERE left(brain_tag, 7) = 'person_'
-						)`,
-					),
-				)
-				.orderBy(desc(memoryEntry.sourceCount), desc(memoryEntry.updatedAt))
-				.limit(AMBIENT_STATIC_CANDIDATE_LIMIT),
-			channelTag
-				? db(env)
-						.select({
-							memory: memoryEntry.memory,
-							buckets: memoryEntry.buckets,
-						})
-						.from(memoryEntry)
-						.innerJoin(space, eq(memoryEntry.spaceId, space.id))
-						.where(
-							and(
-								baseConditions,
-								sql`cardinality(${memoryEntry.buckets}) > 0`,
-								sql`(COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}) ? ${channelTag}`,
-							),
-						)
-						.orderBy(desc(memoryEntry.updatedAt))
-						.limit(AMBIENT_CHANNEL_CANDIDATE_LIMIT)
-				: Promise.resolve([] as AmbientProfileRow[]),
-			...people.map((person) => {
-				const personTag = personBrainTagKey(person.slackUserId)
-				const limit =
-					person.role === "asker"
-						? AMBIENT_ASKER_CANDIDATE_LIMIT
-						: AMBIENT_MENTIONED_CANDIDATE_LIMIT
-				return db(env)
-					.select({ memory: memoryEntry.memory, buckets: memoryEntry.buckets })
-					.from(memoryEntry)
-					.innerJoin(space, eq(memoryEntry.spaceId, space.id))
-					.where(
-						and(
-							baseConditions,
-							sql`cardinality(${memoryEntry.buckets}) > 0`,
-							sql`(COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}) ? ${personTag}`,
-						),
-					)
-					.orderBy(desc(memoryEntry.updatedAt))
-					.limit(limit)
+		const [taggedRows, channelRows, ...personRows] = await Promise.all([
+			listBrainMemories(env, {
+				containerTags: containers,
+				query:
+					"durable facts about this organization: its teams, projects, customers, products and how it works",
+				limit: AMBIENT_STATIC_CANDIDATE_LIMIT,
 			}),
+			channelTag
+				? listBrainMemories(env, {
+						containerTags: containers,
+						query: "what this channel is about and what happens in it",
+						tagKeys: [channelTag],
+						limit: AMBIENT_CHANNEL_CANDIDATE_LIMIT,
+					})
+				: Promise.resolve([] as AmbientProfileRow[]),
+			...people.map((person) =>
+				listBrainMemories(env, {
+					containerTags: containers,
+					query: "who this person is, what they work on and how they work",
+					tagKeys: [personBrainTagKey(person.slackUserId)],
+					limit:
+						person.role === "asker"
+							? AMBIENT_ASKER_CANDIDATE_LIMIT
+							: AMBIENT_MENTIONED_CANDIDATE_LIMIT,
+				}),
+			),
 		])
+
+		// Shared knowledge is whatever carries a brain tag but isn't about one
+		// person; a person's own memories arrive through their own read below.
+		const staticRows = taggedRows.filter(
+			(row) =>
+				row.tags.length > 0 &&
+				!row.tags.some((tag) => tag.startsWith("person_")),
+		)
 
 		// Signpost: a labels-only outline of durable shared knowledge, so the agent
 		// always knows what subjects exist to pull in full — not just the asker's and

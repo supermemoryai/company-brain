@@ -1,5 +1,3 @@
-import { and, db, desc, eq, sql } from "@repo/db"
-import { document } from "@repo/db/schema/content"
 import { generateText } from "ai"
 import * as Effect from "effect/Effect"
 import { makeAppLayer } from "@/config"
@@ -16,6 +14,7 @@ import {
 	wrapBrainGateway,
 } from "../turn/brain-model"
 import { RESEARCH_MODEL } from "../turn/model-profile"
+import { listBrainDocuments } from "../../memory/documents"
 import { deleteStaleBrainMemoryDocument } from "./cleanup"
 import {
 	getBrainMemoryResetEpoch,
@@ -78,21 +77,17 @@ async function findEntity(
 	ref: string,
 	resetEpoch: number,
 ): Promise<ResolvedEntity | null> {
-	const rows = await db(env)
-		.select({ metadata: document.metadata })
-		.from(document)
-		.where(
-			and(
-				eq(document.orgId, orgId),
-				sql`${document.containerTags} && ARRAY[${SHARED_TEAM_BRAIN_CONTAINER_TAG}]::text[]`,
-				sql`${document.metadata}->>'type' = ${ENTITY_TYPE}`,
-				// Scope reads to the current generation so a reset's batched wipe
-				// can't surface a pre-reset entity that isn't deleted yet.
-				sql`${document.metadata}->>'sm_brain_reset_epoch' = ${String(resetEpoch)}`,
-			),
-		)
-		.orderBy(desc(document.createdAt))
-		.limit(100)
+	const rows = await listBrainDocuments(env, {
+		containerTag: SHARED_TEAM_BRAIN_CONTAINER_TAG,
+		metadata: [
+			{ key: "type", value: ENTITY_TYPE },
+			// Scope reads to the current generation so a reset's batched wipe
+			// can't surface a pre-reset entity that isn't deleted yet.
+			{ key: "sm_brain_reset_epoch", value: String(resetEpoch) },
+		],
+		includeContent: false,
+		limit: 100,
+	})
 	for (const row of rows) {
 		const meta = (row.metadata ?? {}) as EntityMeta
 		if (meta.canonical && matches(ref, meta)) {

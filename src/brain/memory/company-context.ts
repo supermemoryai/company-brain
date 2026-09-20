@@ -1,5 +1,5 @@
-import { and, db, desc, eq, sql } from "@repo/db"
-import { document } from "@repo/db/schema/content"
+import { findBrainDocument } from "../../memory/documents"
+
 import * as Effect from "effect/Effect"
 import { makeAppLayer } from "@/config"
 import { captureException } from "@/lib/capture"
@@ -71,18 +71,10 @@ export async function getCompanyContext(
 ): Promise<string | null> {
 	const t = Date.now()
 	try {
-		const [row] = await db(env)
-			.select({ content: document.content })
-			.from(document)
-			.where(
-				and(
-					eq(document.orgId, orgId),
-					sql`${document.containerTags} && ARRAY[${SHARED_TEAM_BRAIN_CONTAINER_TAG}]::text[]`,
-					sql`${document.metadata}->>'type' = ${COMPANY_CONTEXT_TYPE}`,
-				),
-			)
-			.orderBy(desc(document.createdAt))
-			.limit(1)
+		const row = await findBrainDocument(env, {
+			containerTag: SHARED_TEAM_BRAIN_CONTAINER_TAG,
+			metadata: [{ key: "type", value: COMPANY_CONTEXT_TYPE }],
+		})
 		const content = row?.content?.trim() || null
 		if (traceId) {
 			console.log(

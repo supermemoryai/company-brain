@@ -10,6 +10,6 @@ export type BrainProactivitySettings = {
 
 export type ProfileBucketDef = {
 	key: string
-	label: string
-	description?: string
+	description: string
+	label?: string
 }

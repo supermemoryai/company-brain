@@ -19,6 +19,10 @@ export async function orgCanRunCompanyBrain(): Promise<boolean> {
 	return true
 }
 
-export function companyBrainDenialMessage(): string | null {
-	return null
+export function companyBrainDenialMessage(
+	_reason?: string | null,
+	_env?: Env,
+	_activateUrl?: string,
+): string {
+	return "The brain is not available right now."
 }

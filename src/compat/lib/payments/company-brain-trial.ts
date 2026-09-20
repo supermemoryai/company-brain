@@ -1,14 +1,11 @@
-/** Trial machinery from the hosted product; self-hosted has no trial. */
-export const COMPANY_BRAIN_TRIAL_REMINDER_DAYS: number[] = []
-
-export async function shouldSendBrainTrialReminder(): Promise<boolean> {
-	return false
-}
-
-export async function markBrainTrialReminderSent(): Promise<void> {}
-
+/** Trial machinery from the hosted product; a self-hosted brain has no trial. */
 export {
 	companyBrainDenialMessage,
 	getCompanyBrainEntitlement,
 	orgCanRunCompanyBrain,
 } from "./company-brain-entitlement"
+
+/** Upsell link on a denial. Self-hosted denials carry no link. */
+export function companyBrainActivateUrl(_env: Env): string {
+	return ""
+}

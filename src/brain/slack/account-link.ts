@@ -1,4 +1,4 @@
-import { and, db, eq, gt, isNull } from "@repo/db"
+import { and, db, eq, gt, isNull, withTransaction } from "@repo/db"
 import { member, organization, user } from "@repo/db/schema/auth"
 import {
 	slackAccountLinkState,
@@ -11,7 +11,6 @@ import {
 	postSlackEphemeral,
 	postSlackMessage,
 } from "./client"
-import { slackIdentityAdvisoryLockQuery } from "./identity-lock"
 
 const ACCOUNT_LINK_TTL_MS = 15 * 60 * 1_000
 
@@ -51,7 +50,7 @@ export async function createSlackAccountLinkUrl(
 	const token = crypto.randomUUID()
 	const tokenHash = await sha256Hex(token)
 	const now = new Date()
-	await db(env).transaction(async (tx) => {
+	await withTransaction(db(env), async (tx) => {
 		await tx
 			.update(slackAccountLinkState)
 			.set({ consumedAt: now })
@@ -259,7 +258,7 @@ export async function completeSlackAccountLink(
 	userId: string,
 ): Promise<CompletedSlackAccountLink> {
 	const tokenHash = await sha256Hex(token)
-	return db(env).transaction(async (tx) => {
+	return withTransaction(db(env), async (tx) => {
 		const [state] = await tx
 			.select({
 				teamId: slackAccountLinkState.teamId,
@@ -288,9 +287,6 @@ export async function completeSlackAccountLink(
 			.limit(1)
 		if (!orgMember) return { ok: false, reason: "not_in_org" } as const
 
-		await tx.execute(
-			slackIdentityAdvisoryLockQuery(state.teamId, state.slackUserId),
-		)
 		const [existingMapping] = await tx
 			.select({
 				orgId: slackWorkspaceMember.orgId,

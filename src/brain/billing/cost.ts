@@ -1,14 +1,7 @@
-import { trackBillable } from "@/lib/payments"
-import { syncBillingStateNow } from "@/lib/payments/billing-state"
-import { markCompanyBrainTrialExhaustedIfActive } from "@/lib/payments/company-brain-trial"
-import { getSmOperationsCreditCost } from "@/lib/payments/meter-rates"
 import { resolveBillableModel, usdFromTokenUsage } from "./model-prices"
 
 /** xAI: 1 USD = 10^10 ticks (docs.x.ai cost tracking). */
 const XAI_USD_TICKS_PER_DOLLAR = 10_000_000_000
-
-/** Observability-only: log if charge is still pending (does not end waitUntil). */
-const CHARGE_SLOW_LOG_MS = 8_000
 
 export type ModelUsageTokens = {
 	inputTokens?: number | null
@@ -131,17 +124,6 @@ export function responseBodyFromResult(result: {
 	if (!response || typeof response !== "object") return undefined
 	if ("body" in response) return (response as { body?: unknown }).body
 	return response
-}
-
-/**
- * Convert provider USD → sm_operations units (ceil).
- * creditCost = Autumn usd_credits.creditSchema cost for sm_operations
- * (credits burned per op unit).
- */
-export function usdToSmOperations(usd: number, creditCost: number): number {
-	if (!(usd > 0) || !Number.isFinite(usd)) return 0
-	if (!(creditCost > 0) || !Number.isFinite(creditCost)) return 0
-	return Math.ceil(usd / creditCost)
 }
 
 export class BrainCostLedger {
@@ -295,50 +277,21 @@ export function recordFinishEvent(
 	})
 }
 
+/**
+ * Report what a turn cost. The hosted brain billed the org here; a self-hosted
+ * one pays its provider directly, so the spend is only measured and logged.
+ */
 export async function chargeBrainLlmCost(params: {
 	orgId: string
 	ledger: BrainCostLedger
 	source: string
 	traceId?: string
-	/** Needed to persist trial `exhausted` on no_balance. */
 	env?: Env
-	/** Operations already billed for this ledger; only the delta is charged. */
 	chargedOps?: number
-	/** True for internally-triggered work: cost is measured and logged, never billed. */
 	skipBilling?: boolean
 }): Promise<{ usd: number; ops: number; tracked: number; skipped?: string }> {
-	const alreadyCharged = params.chargedOps ?? 0
 	const usd = params.ledger.totalUsd()
-	if (!(usd > 0)) {
-		if (!params.ledger.isEmpty()) {
-			console.log(
-				`[company-brain-billing] source=${params.source} org=${params.orgId} trace=${params.traceId ?? "-"} usd=0 ops=0 (no billable provider cost)`,
-			)
-		}
-		return { usd: 0, ops: 0, tracked: 0 }
-	}
-
-	// Autumn usd_credits.creditSchema maps sm_operations → creditCost (credits per op).
-	const { creditCost, source: rateSource } = await getSmOperationsCreditCost()
-	// Round the cumulative total, then bill the delta, never each slice.
-	const ops = usdToSmOperations(usd, creditCost) - alreadyCharged
-	if (ops <= 0) {
-		console.warn(
-			`[company-brain-billing] source=${params.source} org=${params.orgId} usd=${usd} creditCost=${creditCost} (${rateSource}) produced 0 ops`,
-		)
-		return { usd, ops: 0, tracked: 0 }
-	}
-
-	// skipBilling still measures and logs cost; only the Autumn call is skipped.
-	const skipBilling = params.skipBilling === true
-	const result = skipBilling
-		? null
-		: await trackBillable({
-				orgId: params.orgId,
-				featureId: "sm_operations",
-				value: ops,
-				postUsage: true,
-			})
+	if (!(usd > 0)) return { usd: 0, ops: 0, tracked: 0 }
 
 	const breakdown = params.ledger
 		.breakdown()
@@ -347,48 +300,10 @@ export async function chargeBrainLlmCost(params: {
 				`${e.model}:$${e.usd.toFixed(6)}[${e.source}](in=${e.usage.inputTokens},out=${e.usage.outputTokens})`,
 		)
 		.join(" ")
-
-	const skipped = skipBilling
-		? "skip_billing"
-		: result?.skipped
-			? (result.reason ?? "yes")
-			: undefined
-
 	console.log(
-		`[company-brain-billing] source=${params.source} org=${params.orgId} trace=${params.traceId ?? "-"} usd=${usd.toFixed(6)} ops=${ops} creditCost=${creditCost} rate=${rateSource} tracked=${result?.tracked ?? 0}${skipped ? ` skipped=${skipped}` : ""} ${breakdown}`,
+		`[company-brain-cost] source=${params.source} org=${params.orgId} trace=${params.traceId ?? "-"} usd=${usd.toFixed(6)} ${breakdown}`,
 	)
-
-	// skipBilling never touches the balance, so there is nothing to resync and no
-	// trial to exhaust: result is null and both branches below stay closed.
-	if (result && result.tracked > 0 && params.env) {
-		await syncBillingStateNow(params.env, params.orgId).catch((err) => {
-			console.warn(
-				`[company-brain-billing] source=${params.source} org=${params.orgId} post-charge resync failed:`,
-				err instanceof Error ? err.message : err,
-			)
-		})
-	}
-
-	// Trial credits spent: stop further runs via canRunCompanyBrain.
-	if (result?.skipped && result.reason === "no_balance" && params.env) {
-		await syncBillingStateNow(params.env, params.orgId).catch((err) => {
-			console.warn(
-				`[company-brain-billing] source=${params.source} org=${params.orgId} no_balance resync failed:`,
-				err instanceof Error ? err.message : err,
-			)
-		})
-		await markCompanyBrainTrialExhaustedIfActive(
-			params.env,
-			params.orgId,
-		).catch((err) => {
-			console.warn(
-				`[company-brain-billing] source=${params.source} org=${params.orgId} failed to mark trial exhausted:`,
-				err instanceof Error ? err.message : err,
-			)
-		})
-	}
-
-	return { usd, ops, tracked: result?.tracked ?? 0, skipped }
+	return { usd, ops: 0, tracked: 0 }
 }
 
 /**
@@ -406,24 +321,13 @@ export function scheduleChargeBrainLlmCost(params: {
 	chargedOps?: number
 	skipBilling?: boolean
 }): Promise<number> {
-	let billed = 0
-	const work = chargeBrainLlmCost(params).then((result) => {
-		billed = result.ops
-	})
-	const slowTimer = setTimeout(() => {
-		console.warn(
-			`[company-brain-billing] source=${params.source} org=${params.orgId} trace=${params.traceId ?? "-"} charge still running after ${CHARGE_SLOW_LOG_MS}ms`,
-		)
-	}, CHARGE_SLOW_LOG_MS)
-	return work
+	return chargeBrainLlmCost(params)
+		.then((result) => result.ops)
 		.catch((err) => {
 			console.warn(
-				`[company-brain-billing] source=${params.source} org=${params.orgId} trace=${params.traceId ?? "-"} charge failed:`,
+				`[company-brain-cost] source=${params.source} org=${params.orgId} trace=${params.traceId ?? "-"} cost report failed:`,
 				err instanceof Error ? err.message : err,
 			)
+			return 0
 		})
-		.finally(() => {
-			clearTimeout(slowTimer)
-		})
-		.then(() => billed)
 }

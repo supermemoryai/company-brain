@@ -1,3 +1,4 @@
+import { hydrateSecrets } from "../../setup/secrets"
 import { runInDbScope } from "@repo/db"
 import {
 	Agent,
@@ -29,10 +30,6 @@ import type {
 	PublicChannelRolloutStart,
 } from "../slack/public-channel-rollout"
 import type { ReactionQueuePayload } from "../slack/reaction-queue"
-import type {
-	TrialReminderArm,
-	TrialReminderPayload,
-} from "../slack/trial-reminders"
 import type {
 	SlackApprovalDecision,
 	SlackConnectCompletion,
@@ -203,6 +200,7 @@ export class CompanyBrainAgent extends Agent<Env, CompanyBrainState> {
 	}
 
 	override async onStart(): Promise<void> {
+		await hydrateSecrets(this.env)
 		return (await this.loadImpl()).onStart(this)
 	}
 
@@ -547,17 +545,6 @@ export class CompanyBrainAgent extends Agent<Env, CompanyBrainState> {
 	}
 
 	// After trial attach: schedule day-12 / 15 / 17 activate reminders.
-	async armCompanyBrainTrialReminders(
-		payload: TrialReminderArm,
-	): Promise<void> {
-		return (await this.loadImpl()).armCompanyBrainTrialReminders(this, payload)
-	}
-
-	async runCompanyBrainTrialReminder(
-		payload: TrialReminderPayload,
-	): Promise<void> {
-		return (await this.loadImpl()).runCompanyBrainTrialReminder(this, payload)
-	}
 
 	// Delayed post-turn session reflect
 	async runPostTurnReflect(

@@ -1,4 +1,4 @@
-import { and, asc, db, eq, sql } from "@repo/db"
+import { and, asc, db, eq, sql, withTransaction } from "@repo/db"
 import {
 	member,
 	organization,
@@ -21,10 +21,6 @@ import {
 } from "./client"
 import { postSlackFarewell } from "./farewell"
 import { companyBrainDisconnectMessage } from "./home-welcome"
-import {
-	slackIdentityAdvisoryLockQuery,
-	slackWorkspaceAdvisoryLockQuery,
-} from "./identity-lock"
 
 export type SlackMemberLookup = "found" | "no_slack_email" | "not_in_org"
 export type SlackActorLookup =
@@ -147,10 +143,7 @@ export async function upsertSlackWorkspaceMember(
 		linkSource: "email_match" | "web_confirmed"
 	},
 ): Promise<void> {
-	await db(env).transaction(async (tx) => {
-		await tx.execute(
-			slackIdentityAdvisoryLockQuery(args.teamId, args.slackUserId),
-		)
+	await withTransaction(db(env), async (tx) => {
 		const [existing] = await tx
 			.select({ orgId: slackWorkspaceMember.orgId })
 			.from(slackWorkspaceMember)
@@ -528,8 +521,7 @@ export async function teardownSlackWorkspace(
 		}
 		revoked = revoked && outcome === "revoked"
 
-		const deleted = await db(env).transaction(async (tx) => {
-			await tx.execute(slackWorkspaceAdvisoryLockQuery(row.teamId))
+		const deleted = await withTransaction(db(env), async (tx) => {
 			const gone = await tx
 				.delete(slackWorkspace)
 				.where(
@@ -620,8 +612,7 @@ export async function upsertWorkspace(
 		scopes: values.scopes ?? null,
 		appId: values.appId ?? null,
 	}
-	await db(env).transaction(async (tx) => {
-		await tx.execute(slackWorkspaceAdvisoryLockQuery(values.teamId))
+	await withTransaction(db(env), async (tx) => {
 		const [existing] = await tx
 			.select({ orgId: slackWorkspace.orgId })
 			.from(slackWorkspace)

@@ -12,8 +12,8 @@ interface Env {
 	SLACK_CLIENT_ID?: string
 	SLACK_CLIENT_SECRET?: string
 	SLACK_SIGNING_SECRET?: string
-	/** Derived at first boot and kept in KV; encrypts tokens at rest. */
-	ENCRYPTION_SECRET?: string
+	/** Generated at first boot and kept in KV; encrypts tokens at rest. */
+	ENCRYPTION_SECRET: string
 }
 
 /** Optional Cloudflare AI Gateway. When set, model calls route through it. */

@@ -1,5 +1,6 @@
 import { db, deploymentConfig, eq } from "@repo/db"
 import { decryptToken, encryptToken } from "@/lib/crypto"
+import { encryptionSecret } from "./secrets"
 
 export type SlackCredentials = {
 	clientId: string
@@ -14,25 +15,6 @@ const SLACK_KEYS = {
 } as const
 
 const cache = new WeakMap<object, SlackCredentials | null>()
-
-const ENCRYPTION_SECRET_KV_KEY = "deployment:encryption-secret"
-
-/**
- * The key that encrypts stored secrets. A deployment generates its own on
- * first use and keeps it in KV, so nobody has to invent one to get started;
- * setting ENCRYPTION_SECRET as a Workers secret overrides it.
- */
-export async function encryptionSecret(env: Env): Promise<string> {
-	const configured = env.ENCRYPTION_SECRET?.trim()
-	if (configured) return configured
-	const stored = await env.BRAIN_KV.get(ENCRYPTION_SECRET_KV_KEY)
-	if (stored) return stored
-	const generated = [...crypto.getRandomValues(new Uint8Array(32))]
-		.map((byte) => byte.toString(16).padStart(2, "0"))
-		.join("")
-	await env.BRAIN_KV.put(ENCRYPTION_SECRET_KV_KEY, generated)
-	return generated
-}
 
 /**
  * Slack credentials, from Workers secrets when present, otherwise from what the

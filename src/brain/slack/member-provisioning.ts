@@ -1,10 +1,9 @@
-import { and, db, eq, sql } from "@repo/db"
+import { and, db, eq, sql, withTransaction } from "@repo/db"
 import { member, user } from "@repo/db/schema/auth"
 import { slackWorkspaceMember } from "@repo/db/schema/slack"
 import { ROLE_ADMIN, ROLE_MEMBER, ROLE_OWNER } from "@repo/lib/permissions"
 import { auth } from "@/lib/auth"
 import { identifyMemberProfile } from "@/lib/posthog"
-import { slackIdentityAdvisoryLockQuery } from "./identity-lock"
 import { provisionedMembershipToRevoke } from "./membership-provenance"
 
 export type ProvisionedSlackMember = {
@@ -88,12 +87,9 @@ export async function provisionSlackWorkspaceMember(
 		}
 	}
 
-	const persisted = await db(env).transaction(async (tx) => {
+	const persisted = await withTransaction(db(env), async (tx) => {
 		// Account linking takes the same lock, so the identity and its
 		// membership provenance move as one serialized unit.
-		await tx.execute(
-			slackIdentityAdvisoryLockQuery(args.teamId, args.slackUserId),
-		)
 		const [currentMapping] = await tx
 			.select({
 				orgId: slackWorkspaceMember.orgId,
@@ -195,10 +191,7 @@ export async function revokeSlackWorkspaceMember(
 	env: Env,
 	args: { teamId: string; slackUserId: string; orgId: string },
 ): Promise<boolean> {
-	return db(env).transaction(async (tx) => {
-		await tx.execute(
-			slackIdentityAdvisoryLockQuery(args.teamId, args.slackUserId),
-		)
+	return withTransaction(db(env), async (tx) => {
 		// Include revoked rows so a retry can finish cleanup from data written by
 		// an older, non-transactional deployment.
 		const [mapped] = await tx

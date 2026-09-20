@@ -1,10 +1,9 @@
-import { and, db, desc, eq, inArray, sql } from "@repo/db"
-import { memoryEntry, space } from "@repo/db/schema/spaces"
 import {
 	BRAIN_TAG_LABELS_METADATA_KEY,
 	BRAIN_TAGS_METADATA_KEY,
 } from "@/lib/memory-entry-metadata"
 import { SHARED_TEAM_BRAIN_CONTAINER_TAG } from "@/lib/spaces/provisioning"
+import { listBrainMemories } from "../../memory/memories"
 import type { CompanyBrainAgent } from "../turn/agent"
 
 export const MAX_BRAIN_TAGS_PER_MEMORY = 4
@@ -375,8 +374,6 @@ function normalizeBrainTagScope(containerTag: string | null): string | null {
 	return trimmed || null
 }
 
-const notForgotten = sql`(${memoryEntry.forgetAfter} IS NULL OR ${memoryEntry.forgetAfter} > now())`
-
 export async function fetchTaggedBrainMemories(
 	env: Env,
 	params: {
@@ -392,27 +389,15 @@ export async function fetchTaggedBrainMemories(
 	if (!keys.length) return []
 	const containerTags = [...new Set(params.containerTags.filter(Boolean))]
 	if (!containerTags.length) return []
-	const rows = await db(env)
-		.select({ memory: memoryEntry.memory })
-		.from(memoryEntry)
-		.innerJoin(space, eq(memoryEntry.spaceId, space.id))
-		.where(
-			and(
-				eq(space.orgId, params.orgId),
-				inArray(space.containerTag, containerTags),
-				eq(memoryEntry.isLatest, true),
-				eq(memoryEntry.isForgotten, false),
-				notForgotten,
-				sql`(COALESCE(${memoryEntry.metadata}::jsonb, '{}'::jsonb)->${sql.raw(`'${BRAIN_TAGS_METADATA_KEY}'`)}) ?| ARRAY[${sql.join(
-					keys.map((key) => sql`${key}`),
-					sql`, `,
-				)}]::text[]`,
-			),
-		)
-		.orderBy(desc(memoryEntry.updatedAt))
-		.limit(params.limit)
+	// The tag keys are the subject of the read, so they double as the query.
+	const rows = await listBrainMemories(env, {
+		containerTags,
+		query: keys.map((key) => key.replace(/^[a-z]+_/, "")).join(", "),
+		tagKeys: keys,
+		limit: params.limit,
+	})
 	return rows
-		.map((row) => row.memory?.trim())
+		.map((row) => row.memory.trim())
 		.filter((m): m is string => Boolean(m))
 }
 

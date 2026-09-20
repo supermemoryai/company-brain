@@ -15,3 +15,9 @@ export function captureBeatSent(..._args: unknown[]): void {}
 export function captureBeatSuppressed(..._args: unknown[]): void {}
 export function captureJourneyExited(..._args: unknown[]): void {}
 export async function flushTelemetry(..._args: unknown[]): Promise<void> {}
+
+export type LeaseRequestOutcome = string
+
+export function captureActivationRung(..._args: unknown[]): void {}
+export function captureLeaseRequest(..._args: unknown[]): void {}
+export function captureBrainSkillEvent(..._args: unknown[]): void {}

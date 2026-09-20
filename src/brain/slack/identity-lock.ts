@@ -1,14 +1,8 @@
-import { sql } from "@repo/db"
+/**
+ * Postgres advisory locks serialised concurrent callbacks for one identity or
+ * workspace. D1 has no equivalent, so the writes they guarded are idempotent
+ * upserts instead and these are no-ops kept for call-site symmetry.
+ */
+export function slackIdentityAdvisoryLock(): void {}
 
-export function slackIdentityAdvisoryLockQuery(
-	teamId: string,
-	slackUserId: string,
-) {
-	const key = `company-brain:slack-identity:${teamId}:${slackUserId}`
-	return sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`
-}
-
-export function slackWorkspaceAdvisoryLockQuery(teamId: string) {
-	const key = `company-brain:slack-workspace:${teamId}`
-	return sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`
-}
+export function slackWorkspaceAdvisoryLock(): void {}

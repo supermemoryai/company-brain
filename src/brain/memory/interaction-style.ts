@@ -1,6 +1,5 @@
-import { and, db, desc, eq, sql } from "@repo/db"
-import { memoryEntry, space } from "@repo/db/schema/spaces"
 import { AGENT_SELF_CONTAINER_TAG } from "@/lib/spaces/provisioning"
+import { listBrainMemories } from "../../memory/memories"
 import { personBrainTagKey } from "./tags"
 
 export type InteractionStyleProfile = {
@@ -26,27 +25,12 @@ export async function loadInteractionStyleProfile(
 	orgId: string,
 	askerSlackUserId?: string | null,
 ): Promise<InteractionStyleProfile | null> {
-	const rows = await db(env)
-		.select({
-			memory: memoryEntry.memory,
-			buckets: memoryEntry.buckets,
-			tags: sql<
-				string[] | null
-			>`(${memoryEntry.metadata}::jsonb -> 'sm_brain_tags')`,
-		})
-		.from(memoryEntry)
-		.innerJoin(space, eq(memoryEntry.spaceId, space.id))
-		.where(
-			and(
-				eq(space.orgId, orgId),
-				eq(space.containerTag, AGENT_SELF_CONTAINER_TAG),
-				eq(memoryEntry.isLatest, true),
-				eq(memoryEntry.isForgotten, false),
-				sql`(${memoryEntry.forgetAfter} IS NULL OR ${memoryEntry.forgetAfter} > now())`,
-			),
-		)
-		.orderBy(desc(memoryEntry.updatedAt))
-		.limit(80)
+	const rows = await listBrainMemories(env, {
+		containerTags: [AGENT_SELF_CONTAINER_TAG],
+		query:
+			"how this team wants to be spoken to: tone, voice, social norms, culture, things not to do, how the team operates",
+		limit: 80,
+	})
 
 	const personKey = askerSlackUserId?.trim()
 		? personBrainTagKey(askerSlackUserId)

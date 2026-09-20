@@ -1,4 +1,4 @@
-import { and, asc, db, eq, isNotNull, isNull, lt, or, sql } from "@repo/db"
+import { and, asc, db, eq, isNotNull, isNull, lt, or, sql, withTransaction } from "@repo/db"
 import { googleWorkspaceGrant, mcpConnection } from "@repo/db/schema/brain/mcp"
 import { generateId } from "@repo/lib/generate-id"
 import type { SQL } from "drizzle-orm"
@@ -60,15 +60,6 @@ export function googleCallbackLockKey(
 	slug: string,
 ): string {
 	return `company-brain:embedded-callback:${orgId}:${userId}:${slug}`
-}
-
-export function googleCallbackAdvisoryLockQuery(
-	orgId: string,
-	userId: string,
-	slug: string,
-) {
-	const lockKey = googleCallbackLockKey(orgId, userId, slug)
-	return sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
 }
 
 export function googleGrantStatus(scopes: readonly string[]): {
@@ -455,10 +446,7 @@ export async function finalizeGoogleWorkspaceCallback(
 	},
 ): Promise<GoogleWorkspaceGrant> {
 	try {
-		return await db(args.env).transaction(async (tx) => {
-			await tx.execute(
-				googleCallbackAdvisoryLockQuery(args.orgId, args.userId, "gmail"),
-			)
+		return await withTransaction(db(args.env), async (tx) => {
 			const winner = await getGoogleCallbackWinnerIdentityWithStore(tx, {
 				orgId: args.orgId,
 				userId: args.userId,
@@ -579,13 +567,12 @@ async function markGoogleGrantRevokedIfClaimOwned(
 	refreshVersion: number,
 	claimToken: string,
 ): Promise<boolean> {
-	return db(env).transaction(async (tx) => {
+	return withTransaction(db(env), async (tx) => {
 		await tx
 			.select({ id: mcpConnection.id })
 			.from(mcpConnection)
 			.where(eq(mcpConnection.googleWorkspaceGrantId, grantId))
 			.orderBy(asc(mcpConnection.id))
-			.for("update")
 
 		const [updated] = await tx
 			.update(googleWorkspaceGrant)
@@ -793,7 +780,7 @@ async function revokeGoogleWorkspaceGrantsWhere(
 	condition: SQL,
 	request: typeof fetch,
 ): Promise<void> {
-	const deleted = await db(env).transaction(async (tx) => {
+	const deleted = await withTransaction(db(env), async (tx) => {
 		const bindings = await tx
 			.select({ grantId: mcpConnection.googleWorkspaceGrantId })
 			.from(mcpConnection)
@@ -883,7 +870,7 @@ async function revokeAllGoogleWorkspaceGrantsForUser(
 	userId: string,
 	request: typeof fetch,
 ): Promise<void> {
-	const deleted = await db(env).transaction(async (tx) => {
+	const deleted = await withTransaction(db(env), async (tx) => {
 		await tx
 			.delete(mcpConnection)
 			.where(
