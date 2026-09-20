@@ -90,6 +90,41 @@ export async function getBrainDocumentByCustomId(
 	}
 }
 
+/** A document by supermemory's own id, or null if it is gone. */
+export async function getBrainDocument(
+	env: Env,
+	id: string,
+): Promise<BrainDocument | null> {
+	try {
+		const document = await memoryClient(env).documents.get(id)
+		return normalize(document as Parameters<typeof normalize>[0])
+	} catch {
+		return null
+	}
+}
+
+/** Replace a document's metadata, keeping its content and container tags. */
+export async function updateBrainDocumentMetadata(
+	env: Env,
+	id: string,
+	metadata: Record<string, unknown>,
+): Promise<void> {
+	const scalars: Record<string, string | number | boolean> = {}
+	for (const [key, value] of Object.entries(metadata)) {
+		if (value === null || value === undefined) continue
+		if (Array.isArray(value)) {
+			scalars[key] = value.join(",")
+		} else if (
+			typeof value === "string" ||
+			typeof value === "number" ||
+			typeof value === "boolean"
+		) {
+			scalars[key] = value
+		}
+	}
+	await memoryClient(env).documents.update(id, { metadata: scalars })
+}
+
 export async function deleteBrainDocument(
 	env: Env,
 	id: string,

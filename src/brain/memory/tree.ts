@@ -1,20 +1,9 @@
+import { runInDbScope } from "@repo/db"
 import {
-	and,
-	db,
-	desc,
-	eq,
-	gte,
-	inArray,
-	lt,
-	runInDbScope,
-	sql,
-} from "@repo/db"
-import { document } from "@repo/db/schema/content"
-import {
-	memoryDocumentSource,
-	memoryEntry,
-	space,
-} from "@repo/db/schema/spaces"
+	getBrainDocument,
+	updateBrainDocumentMetadata,
+} from "../../memory/documents"
+import { documentStatuses } from "../../memory/memories"
 import type { CompanyBrainAgent } from "../turn/agent"
 import {
 	BRAIN_TAG_LABELS_METADATA_KEY,
@@ -32,7 +21,6 @@ const OUTLINE_TAG_LIMIT = 500
 const MAPPING_PAGE_SIZE = 500
 const HYDRATION_DOCUMENT_ID_CHUNK = 100
 const POSTGRES_QUERY_CONCURRENCY = 4
-const notForgotten = sql`(${memoryEntry.forgetAfter} IS NULL OR ${memoryEntry.forgetAfter} > now())`
 const TOPIC_TREE_TAG_KINDS = new Set<BrainMemoryTag["kind"]>([
 	"topic",
 	"project",
@@ -301,14 +289,10 @@ export async function reconcileBrainMemoryNodeMappings(
 	const pages = await mapWithConcurrency(
 		chunksOf(documentIds, HYDRATION_DOCUMENT_ID_CHUNK),
 		POSTGRES_QUERY_CONCURRENCY,
-		(chunk) =>
-			db(env)
-				.select({ id: document.id, status: document.status })
-				.from(document)
-				.where(and(eq(document.orgId, orgId), inArray(document.id, chunk))),
+		(chunk) => documentStatuses(env, chunk),
 	)
-	for (const rows of pages) {
-		for (const row of rows) {
+	for (const statuses of pages) {
+		for (const row of statuses.values()) {
 			if (row.status !== "failed") valid.add(row.id)
 		}
 	}
@@ -382,20 +366,13 @@ export async function repointBrainMemoryMetadata(
 	const oldKey = normalizeBrainTagKey(oldNodePath)
 	const newKey = normalizeBrainTagKey(newPath)
 	if (!ids.length || oldKey === newKey) return
-	const rows = await db(env)
-		.select({ id: memoryEntry.id, metadata: memoryEntry.metadata })
-		.from(memoryEntry)
-		.innerJoin(
-			memoryDocumentSource,
-			eq(memoryDocumentSource.memoryEntryId, memoryEntry.id),
+	// Tags live on the documents the brain wrote, so a split re-tags those
+	// rather than the memories supermemory derived from them.
+	const rows = (
+		await mapWithConcurrency(ids, POSTGRES_QUERY_CONCURRENCY, (id) =>
+			getBrainDocument(env, id),
 		)
-		.where(
-			and(
-				eq(memoryEntry.orgId, orgId),
-				inArray(memoryDocumentSource.documentId, ids),
-				eq(memoryEntry.isLatest, true),
-			),
-		)
+	).filter((row): row is NonNullable<typeof row> => row !== null)
 	const updates = rows.flatMap((row) => {
 		const metadata = (row.metadata ?? {}) as Record<string, unknown>
 		const keys = metadata[BRAIN_TAGS_METADATA_KEY]
@@ -420,10 +397,7 @@ export async function repointBrainMemoryMetadata(
 		]
 	})
 	await mapWithConcurrency(updates, POSTGRES_QUERY_CONCURRENCY, (update) =>
-		db(env)
-			.update(memoryEntry)
-			.set({ metadata: update.metadata })
-			.where(eq(memoryEntry.id, update.id)),
+		updateBrainDocumentMetadata(env, update.id, update.metadata),
 	)
 }
 
@@ -547,52 +521,36 @@ export async function hydrateLiveBrainNodeMappings(
 			documentIds: chunk.map((mapping) => mapping.documentId),
 		})),
 	)
+	// A node's content used to be the memory entries derived from its documents.
+	// The public API does not expose that derivation, so a node hydrates from
+	// the documents the brain wrote under it — the same substance, one level up.
 	const pages = await mapWithConcurrency(
 		batches,
 		POSTGRES_QUERY_CONCURRENCY,
-		async ({ containerTag, documentIds }) => {
-			const deduped = db(env)
-				.selectDistinctOn([memoryEntry.id], {
-					documentId: sql<string>`${document.id}`.as("document_id"),
-					memoryId: sql<string>`${memoryEntry.id}`.as("memory_id"),
-					memory: sql<string>`${memoryEntry.memory}`.as("memory"),
-					updatedAt: sql<Date>`${memoryEntry.updatedAt}`
-						.mapWith(memoryEntry.updatedAt)
-						.as("updated_at"),
+		async ({ documentIds }) => {
+			const documents = await mapWithConcurrency(
+				documentIds,
+				POSTGRES_QUERY_CONCURRENCY,
+				(id) => getBrainDocument(env, id),
+			)
+			return documents
+				.flatMap((doc) => {
+					const text = doc?.content?.trim()
+					if (!doc || !text) return []
+					const updatedAt = new Date(doc.createdAt)
+					if (range?.before && updatedAt >= range.before) return []
+					if (range?.after && updatedAt < range.after) return []
+					return [
+						{
+							documentId: doc.id,
+							memoryId: doc.id,
+							memory: text,
+							updatedAt,
+						},
+					]
 				})
-				.from(document)
-				.innerJoin(
-					memoryDocumentSource,
-					eq(memoryDocumentSource.documentId, document.id),
-				)
-				.innerJoin(
-					memoryEntry,
-					eq(memoryEntry.id, memoryDocumentSource.memoryEntryId),
-				)
-				.innerJoin(space, eq(space.id, memoryEntry.spaceId))
-				.where(
-					and(
-						eq(document.orgId, orgId),
-						inArray(document.id, documentIds),
-						eq(space.containerTag, containerTag),
-						eq(space.orgId, orgId),
-						eq(memoryEntry.isLatest, true),
-						eq(memoryEntry.isForgotten, false),
-						notForgotten,
-						// Keyset range on updatedAt: `before` pages to older memories
-						// (each page fetches only what's past the cursor, never cumulative);
-						// `after` lets a caller target a window directly.
-						range?.before ? lt(memoryEntry.updatedAt, range.before) : undefined,
-						range?.after ? gte(memoryEntry.updatedAt, range.after) : undefined,
-					),
-				)
-				.orderBy(memoryEntry.id, desc(memoryEntry.updatedAt))
-				.as("deduped_brain_node_memory")
-			return db(env)
-				.select()
-				.from(deduped)
-				.orderBy(desc(deduped.updatedAt))
-				.limit(Math.max(1, limitPerChunk))
+				.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+				.slice(0, Math.max(1, limitPerChunk))
 		},
 	)
 	const rows = pages.flat()
@@ -619,36 +577,25 @@ export async function hydrateLiveBrainNodeDocuments(
 	const pages = await mapWithConcurrency(
 		batches,
 		POSTGRES_QUERY_CONCURRENCY,
-		({ containerTag, documentIds }) =>
-			db(env)
-				.selectDistinctOn([document.id], {
-					documentId: document.id,
-					memoryId: memoryEntry.id,
-					memory: memoryEntry.memory,
-					updatedAt: memoryEntry.updatedAt,
-				})
-				.from(document)
-				.innerJoin(
-					memoryDocumentSource,
-					eq(memoryDocumentSource.documentId, document.id),
-				)
-				.innerJoin(
-					memoryEntry,
-					eq(memoryEntry.id, memoryDocumentSource.memoryEntryId),
-				)
-				.innerJoin(space, eq(space.id, memoryEntry.spaceId))
-				.where(
-					and(
-						eq(document.orgId, orgId),
-						inArray(document.id, documentIds),
-						eq(space.containerTag, containerTag),
-						eq(space.orgId, orgId),
-						eq(memoryEntry.isLatest, true),
-						eq(memoryEntry.isForgotten, false),
-						notForgotten,
-					),
-				)
-				.orderBy(document.id, desc(memoryEntry.updatedAt)),
+		async ({ documentIds }) => {
+			const documents = await mapWithConcurrency(
+				documentIds,
+				POSTGRES_QUERY_CONCURRENCY,
+				(id) => getBrainDocument(env, id),
+			)
+			return documents.flatMap((doc) => {
+				const text = doc?.content?.trim()
+				if (!doc || !text) return []
+				return [
+					{
+						documentId: doc.id,
+						memoryId: doc.id,
+						memory: text,
+						updatedAt: new Date(doc.createdAt),
+					},
+				]
+			})
+		},
 	)
 	const rows = pages.flat()
 	return rows.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())

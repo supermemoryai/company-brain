@@ -1,7 +1,6 @@
-import { and, db, eq, isNull, sql } from "@repo/db"
 import type { ProfileBucketDef } from "@repo/db/schema/common"
-import { space } from "@repo/db/schema/spaces"
 import { captureException } from "@/lib/capture"
+import { setContainerEntityContext } from "../../memory/entity-context"
 import {
 	AGENT_SELF_CONTAINER_TAG,
 	privateContainerTagFor,
@@ -61,128 +60,16 @@ function markSynced(agent: CompanyBrainAgent, scopeKey: string): void {
 	`
 }
 
-type ExistingBrainSpace = Pick<
-	typeof space.$inferSelect,
-	"id" | "name" | "metadata"
->
-
-function existingNamePredicate(existing: ExistingBrainSpace) {
-	return existing.name === null
-		? isNull(space.name)
-		: eq(space.name, existing.name)
-}
-
-function managedNamePredicate(existing: ExistingBrainSpace) {
-	const managedName = slackManagedBrainSpaceName(existing.metadata)
-	return managedName === undefined
-		? sql`(${space.metadata}->>${SLACK_MANAGED_SPACE_NAME_METADATA_KEY}) IS NULL`
-		: sql`${space.metadata}->>${SLACK_MANAGED_SPACE_NAME_METADATA_KEY} = ${managedName}`
-}
-
-function metadataObjectExpression() {
-	return sql`CASE
-		WHEN jsonb_typeof(COALESCE(${space.metadata}::jsonb, '{}'::jsonb)) = 'object'
-		THEN COALESCE(${space.metadata}::jsonb, '{}'::jsonb)
-		ELSE '{}'::jsonb
-	END`
-}
-
-function metadataWithManagedName(name: string) {
-	return sql`jsonb_set(
-		${metadataObjectExpression()},
-		ARRAY[${SLACK_MANAGED_SPACE_NAME_METADATA_KEY}]::text[],
-		to_jsonb(${name}::text),
-		true
-	)::json`
-}
-
-function metadataWithoutManagedName() {
-	return sql`(${metadataObjectExpression()} - ${SLACK_MANAGED_SPACE_NAME_METADATA_KEY}::text)::json`
-}
-
-async function reconcileBrainSpaceName(
-	env: Env,
-	params: {
-		orgId: string
-		containerTag: string
-		name: string
-		trackSlackManagedName?: boolean
-	},
-	selected?: ExistingBrainSpace,
-): Promise<void> {
-	let existing = selected
-	if (!existing) {
-		const [row] = await db(env)
-			.select({ id: space.id, name: space.name, metadata: space.metadata })
-			.from(space)
-			.where(
-				and(
-					eq(space.orgId, params.orgId),
-					eq(space.containerTag, params.containerTag),
-				),
-			)
-			.limit(1)
-		existing = row
-	}
-	if (!existing?.id) return
-
-	const previousManagedName = slackManagedBrainSpaceName(existing.metadata)
-	const shouldManageName = params.trackSlackManagedName
-		? isSlackManagedBrainSpaceName({
-				name: existing.name,
-				containerTag: params.containerTag,
-				desiredName: params.name,
-				metadata: existing.metadata,
-			})
-		: isGeneratedBrainSpaceName(existing.name, params.containerTag, params.name)
-
-	if (!shouldManageName) {
-		// A name that differs from the last Slack-managed value is customized.
-		// Clear provenance with a CAS so future channel renames cannot claim it.
-		if (params.trackSlackManagedName && previousManagedName !== undefined) {
-			await db(env)
-				.update(space)
-				.set({ metadata: metadataWithoutManagedName() })
-				.where(
-					and(
-						eq(space.id, existing.id),
-						existingNamePredicate(existing),
-						managedNamePredicate(existing),
-					),
-				)
-		}
-		return
-	}
-
-	const shouldSetName = existing.name !== params.name
-	const shouldSetManagedName =
-		params.trackSlackManagedName && previousManagedName !== params.name
-	if (!shouldSetName && !shouldSetManagedName) return
-
-	await db(env)
-		.update(space)
-		.set({
-			...(shouldSetName ? { name: params.name } : {}),
-			...(shouldSetManagedName
-				? { metadata: metadataWithManagedName(params.name) }
-				: {}),
-		})
-		.where(
-			and(
-				eq(space.id, existing.id),
-				existingNamePredicate(existing),
-				...(params.trackSlackManagedName
-					? [managedNamePredicate(existing)]
-					: []),
-			),
-		)
-}
-
-// Upserts a brain-owned space's config, creating the space row if
-// ingestion/provisioning hasn't yet. Config refresh is independent from the
-// compare-and-swap name reconciliation so concurrent custom renames win.
+/**
+ * Record what a container is about so every write into it carries that context.
+ *
+ * The hosted product owned the space row and could also set its display name,
+ * visibility and profile buckets. The public API exposes none of those, but it
+ * does take the entity context per document, which is the part that actually
+ * shapes what gets remembered.
+ */
 async function upsertBrainSpaceConfig(
-	env: Env,
+	_env: Env,
 	params: {
 		orgId: string
 		ownerId: string | null
@@ -194,48 +81,7 @@ async function upsertBrainSpaceConfig(
 		trackSlackManagedName?: boolean
 	},
 ): Promise<void> {
-	const [existing] = await db(env)
-		.select({ id: space.id, name: space.name, metadata: space.metadata })
-		.from(space)
-		.where(
-			and(
-				eq(space.orgId, params.orgId),
-				eq(space.containerTag, params.containerTag),
-			),
-		)
-		.limit(1)
-
-	if (existing?.id) {
-		await db(env)
-			.update(space)
-			.set({
-				entityContext: params.entityContext,
-				profileBuckets: params.profileBuckets,
-			})
-			.where(eq(space.id, existing.id))
-		await reconcileBrainSpaceName(env, params, existing)
-		return
-	}
-
-	await db(env)
-		.insert(space)
-		.values({
-			orgId: params.orgId,
-			ownerId: params.ownerId,
-			containerTag: params.containerTag,
-			name: params.name,
-			visibility: params.visibility,
-			entityContext: params.entityContext,
-			profileBuckets: params.profileBuckets,
-			...(params.trackSlackManagedName
-				? {
-						metadata: {
-							[SLACK_MANAGED_SPACE_NAME_METADATA_KEY]: params.name,
-						},
-					}
-				: {}),
-		})
-		.onConflictDoNothing()
+	setContainerEntityContext(params.containerTag, params.entityContext)
 }
 
 export type BrainProfileSyncContext = {
@@ -339,27 +185,9 @@ export async function maybeSyncBrainProfileConfig(
 			ctx.privateChannel.channelId,
 			ctx.privateChannel.channelName,
 		)
+		// Space display names were a hosted-product concern; there is nothing to
+		// repair here, so a channel only does the profile refresh.
 		const profileSyncNeeded = needsSync(agent, scopeKey)
-
-		// Display-name repair is cheap and independent from the heavier profile
-		// refresh. This lets legacy/generated names heal on the next channel turn.
-		if (!profileSyncNeeded) {
-			try {
-				await reconcileBrainSpaceName(env, {
-					orgId: ctx.orgId,
-					containerTag,
-					name,
-					trackSlackManagedName: true,
-				})
-			} catch (err) {
-				captureException(err instanceof Error ? err : new Error(String(err)), {
-					tags: {
-						component: "brain-profile-sync",
-						scope: "private_channel_name",
-					},
-				})
-			}
-		}
 
 		if (profileSyncNeeded) {
 			try {
