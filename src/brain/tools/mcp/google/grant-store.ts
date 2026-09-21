@@ -13,9 +13,9 @@ import {
 import { hasRequiredGmailScopes } from "./scopes"
 
 export type GoogleWorkspaceGrant = typeof googleWorkspaceGrant.$inferSelect
-type GoogleGrantTransaction = Parameters<
-	Parameters<ReturnType<typeof db>["transaction"]>[0]
->[0]
+// withTransaction hands back the same handle, since D1 has no interactive
+// transactions to open.
+type GoogleGrantTransaction = ReturnType<typeof db>
 
 export class GoogleIdentityMismatchError extends Error {
 	authorization?: LosingGoogleAuthorization
@@ -674,8 +674,8 @@ export async function getFreshGoogleAccessToken(
 			method: "POST",
 			headers: { "content-type": "application/x-www-form-urlencoded" },
 			body: new URLSearchParams({
-				client_id: env.COMPANY_BRAIN_GOOGLE_WORKSPACE_CLIENT_ID,
-				client_secret: env.COMPANY_BRAIN_GOOGLE_WORKSPACE_CLIENT_SECRET,
+				client_id: env.GOOGLE_WORKSPACE_CLIENT_ID ?? "",
+				client_secret: env.GOOGLE_WORKSPACE_CLIENT_SECRET ?? "",
 				grant_type: "refresh_token",
 				refresh_token: refreshToken,
 			}),

@@ -13,10 +13,11 @@ import * as Schedule from "effect/Schedule"
 
 export type ContextSearchRequest = {
 	query: string
-	timeoutMS: number
 	/** numResults can't go below 10, so fetch 10 and keep 5 — half the tokens, same credit. */
 	numResults?: number
 	freshness?: WebSearchParams["freshness"]
+	/** Bounds the whole call; the client carries it, not the request body. */
+	timeoutMS: number
 }
 
 export type ContextSearchResult = WebSearchResponse.Result
@@ -131,7 +132,6 @@ export function contextSearch(
 			.web.search({
 				query: req.query,
 				numResults: req.numResults ?? 10,
-				timeoutMS: req.timeoutMS,
 				tags: [usageTag],
 				...(req.freshness ? { freshness: req.freshness } : {}),
 			})
@@ -152,7 +152,6 @@ export function contextScrapeMarkdown(
 				url,
 				useMainContentOnly: true,
 				includeImages: false,
-				timeoutMS,
 				tags: [usageTag],
 			})
 			.withResponse(),

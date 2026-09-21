@@ -29,6 +29,12 @@ When the deploy finishes, open `/setup` on your new worker. It checks what is
 configured, hands you a Slack app manifest with your URLs already in it, and
 takes the three Slack values back. Then install to your workspace.
 
+After the first deploy, apply the database migrations once:
+
+```sh
+bun run db:migrate
+```
+
 ## Local development
 
 ```sh
@@ -57,7 +63,28 @@ that hostname when you create the Slack app.
 The agent itself is a Durable Object, one per organization, so a conversation
 has somewhere to live between messages.
 
+## What changed in the open
+
+Three things the hosted version could do are not available through the public
+API, and the brain does something slightly different instead:
+
+- **Listing memories.** The API exposes memories through search, so reads that
+  were "every memory in this container, newest first" are now "every memory in
+  this container about X", ranked by relevance. Each read says what it is
+  looking for.
+- **Space configuration.** Names, visibility and profile buckets have no public
+  equivalent. Entity context does, per document, so the brain records what a
+  container is about and attaches it to every write into that container.
+- **Node contents.** A memory node hydrates from the documents the brain wrote
+  under it, rather than from the memories supermemory derived from them.
+
+Also worth knowing: D1 has no interactive transactions or row locks. The writes
+that relied on them are idempotent upserts or use a claim token, and they run
+sequentially now.
+
 ## Status
 
-Extracted and rebuilt in the open. See `docs/` for the original architecture
-notes. Issues and pull requests welcome; this is not a supported product.
+Extracted and rebuilt in the open: it type-checks, builds, and boots, but it
+has not yet been run against a live Slack workspace end to end. See `docs/` for
+the original architecture notes. Issues and pull requests welcome; this is not
+a supported product.

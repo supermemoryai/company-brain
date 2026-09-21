@@ -1,4 +1,4 @@
-export type BrainOrgLike = { id: string; metadata?: unknown } | null | undefined
+export type BrainOrgLike = { id?: string; metadata?: unknown } | null | undefined
 
 /**
  * In the hosted product this gated the brain behind a paid add-on. A

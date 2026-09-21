@@ -1,3 +1,4 @@
+import { configureFromEnv } from "../../config"
 import { hydrateSecrets } from "../../setup/secrets"
 import { runInDbScope } from "@repo/db"
 import {
@@ -201,6 +202,7 @@ export class CompanyBrainAgent extends Agent<Env, CompanyBrainState> {
 
 	override async onStart(): Promise<void> {
 		await hydrateSecrets(this.env)
+		configureFromEnv(this.env)
 		return (await this.loadImpl()).onStart(this)
 	}
 

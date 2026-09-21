@@ -2,7 +2,6 @@ import { and, db, eq, sql, withTransaction } from "@repo/db"
 import { member, user } from "@repo/db/schema/auth"
 import { slackWorkspaceMember } from "@repo/db/schema/slack"
 import { ROLE_ADMIN, ROLE_MEMBER, ROLE_OWNER } from "@repo/lib/permissions"
-import { auth } from "@/lib/auth"
 import { identifyMemberProfile } from "@/lib/posthog"
 import { provisionedMembershipToRevoke } from "./membership-provenance"
 
@@ -70,14 +69,14 @@ export async function provisionSlackWorkspaceMember(
 		userId = existing?.id
 		if (!userId) {
 			try {
-				const ctx = await auth(env).$context
-				const created = await ctx.internalAdapter.createUser({
-					email,
-					name: normalizedName(args.name, email),
-					emailVerified: true,
-				})
-				userId = created.id
-				createdUser = true
+				// People arrive through Slack, so this is where a person first
+				// becomes a user; there is no signup flow to go through.
+				const [created] = await db(env)
+					.insert(user)
+					.values({ email, name: normalizedName(args.name, email) })
+					.returning({ id: user.id })
+				userId = created?.id
+				createdUser = Boolean(created?.id)
 			} catch (error) {
 				// A concurrent Slack page/join event may have created the same email.
 				const raced = await findUserByEmail(env, email)
@@ -111,6 +110,9 @@ export async function provisionSlackWorkspaceMember(
 			)
 		}
 		const persistedUserId = currentMapping?.userId ?? userId
+		if (!persistedUserId) {
+			throw new Error("Slack member could not be resolved to a user")
+		}
 		const insertedMembers = await tx
 			.insert(member)
 			.values({

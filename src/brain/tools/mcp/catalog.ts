@@ -96,8 +96,8 @@ export const MCP_CATALOG: McpCatalogEntry[] = [
 		leaseable: true,
 		oauthScope: "repo read:org read:user",
 		preregisteredClientEnv: {
-			id: "COMPANY_BRAIN_GITHUB_MCP_CLIENT_ID",
-			secret: "COMPANY_BRAIN_GITHUB_MCP_CLIENT_SECRET",
+			id: "GITHUB_MCP_CLIENT_ID",
+			secret: "GITHUB_MCP_CLIENT_SECRET",
 		},
 	},
 	{

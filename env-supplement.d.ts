@@ -7,7 +7,7 @@ interface Env {
 	XAI_API_KEY?: string
 	DAYTONA_API_KEY?: string
 	/** Public origin of this worker, used for OAuth redirects and Slack links. */
-	PUBLIC_URL?: string
+	PUBLIC_URL: string
 	/** Slack app credentials, captured by the setup wizard and stored in D1. */
 	SLACK_CLIENT_ID?: string
 	SLACK_CLIENT_SECRET?: string
@@ -28,4 +28,20 @@ interface Env {
 	SLACK_BOT_TOKEN?: string
 	/** Where account-link URLs point. Defaults to this worker. */
 	CONSUMER_APP_URL?: string
+}
+
+interface Env {
+	/** "development" in wrangler dev; unset in production. */
+	NODE_ENV?: string
+	/** GitHub OAuth app used for the GitHub MCP connection. */
+	GITHUB_MCP_CLIENT_ID?: string
+	GITHUB_MCP_CLIENT_SECRET?: string
+	/** Google Workspace OAuth app for Gmail/Calendar/Drive tools. */
+	GOOGLE_WORKSPACE_CLIENT_ID?: string
+	GOOGLE_WORKSPACE_CLIENT_SECRET?: string
+}
+
+interface Env {
+	/** Optional Context.dev key for the web-extract tool. */
+	CONTEXT_DEV_API_KEY?: string
 }

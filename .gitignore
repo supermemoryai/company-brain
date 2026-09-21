@@ -3,3 +3,4 @@ dist/
 .dev.vars
 .wrangler/
 .DS_Store
+dist-brain/

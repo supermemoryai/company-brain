@@ -26,6 +26,7 @@ export type AddMemorySingleParams = {
 		containerTag?: string
 		containerTags?: string[]
 		metadata?: Record<string, string | number | boolean | string[] | null>
+		taskType?: "memory" | "superrag"
 	}
 }
 
@@ -85,6 +86,9 @@ export function addMemorySingle(
 						: {}),
 					...(containerTags ? { containerTags } : {}),
 					...(entityContext ? { entityContext } : {}),
+					...(requestParams.taskType
+						? { taskType: requestParams.taskType }
+						: {}),
 					...(flattenMetadata(requestParams.metadata)
 						? { metadata: flattenMetadata(requestParams.metadata) }
 						: {}),

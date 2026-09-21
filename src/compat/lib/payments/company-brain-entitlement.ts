@@ -15,7 +15,11 @@ export async function getCompanyBrainEntitlement(
 	return { allowed: true, reason: null }
 }
 
-export async function orgCanRunCompanyBrain(): Promise<boolean> {
+export async function orgCanRunCompanyBrain(
+	_env?: Env,
+	_orgId?: string,
+	_defer?: (promise: Promise<unknown>) => void,
+): Promise<boolean> {
 	return true
 }
 

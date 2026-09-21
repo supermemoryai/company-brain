@@ -1,0 +1,50 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 75d5e0927f4a6c90752bc2fe03773a1e749bbcba..62324dd984d195e6245797d720e4f6d403962e9d 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -81,6 +81,11 @@ const providers = [
+ 		name: "compat",
+ 		regex: /^https:\/\/gateway\.ai\.cloudflare\.com\/v1\/compat\//,
+ 		transformEndpoint: (url) => url.replace(/^https:\/\/gateway\.ai\.cloudflare\.com\/v1\/compat\//, "")
++	},
++	{
++		name: "workers-ai",
++		regex: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/[^\/]+\/ai\//,
++		transformEndpoint: (url) => url.replace(/^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/[^\/]+\/ai\//, "")
+ 	}
+ ];
+ //#endregion
+@@ -212,7 +217,7 @@ var AiGatewayChatLanguageModel = class {
+ 		if (!this.models[step]) throw new Error("Unexpected AI Gateway Error");
+ 		this.models[step].config = {
+ 			...this.models[step].config,
+-			fetch: (_url, _req) => resp
++			fetch: (_url, _req) => resp.clone()
+ 		};
+ 		return this.models[step][modelMethod](options);
+ 	}
+diff --git a/dist/index.mjs b/dist/index.mjs
+index d69e780949e5176bf14004a1c55b5701175f279c..677081514f27caf99dd398ed9c66afc574fd486d 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -80,6 +80,11 @@ const providers = [
+ 		name: "compat",
+ 		regex: /^https:\/\/gateway\.ai\.cloudflare\.com\/v1\/compat\//,
+ 		transformEndpoint: (url) => url.replace(/^https:\/\/gateway\.ai\.cloudflare\.com\/v1\/compat\//, "")
++	},
++	{
++		name: "workers-ai",
++		regex: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/[^\/]+\/ai\//,
++		transformEndpoint: (url) => url.replace(/^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/[^\/]+\/ai\//, "")
+ 	}
+ ];
+ //#endregion
+@@ -211,7 +216,7 @@ var AiGatewayChatLanguageModel = class {
+ 		if (!this.models[step]) throw new Error("Unexpected AI Gateway Error");
+ 		this.models[step].config = {
+ 			...this.models[step].config,
+-			fetch: (_url, _req) => resp
++			fetch: (_url, _req) => resp.clone()
+ 		};
+ 		return this.models[step][modelMethod](options);
+ 	}

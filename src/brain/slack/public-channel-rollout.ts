@@ -1,7 +1,7 @@
 import { and, db, eq, inArray } from "@repo/db"
 import { organization } from "@repo/db/schema/auth"
-import { document } from "@repo/db/schema/content"
 import { generateId } from "@repo/lib/generate-id"
+import { documentStatuses } from "../../memory/memories"
 import * as Effect from "effect/Effect"
 import { makeAppLayer } from "@/config"
 import { decryptToken } from "@/lib/crypto"
@@ -1758,14 +1758,9 @@ async function memoryReady(
 		return "failed"
 	}
 	const ids = docs.flatMap((doc) => (doc.document_id ? [doc.document_id] : []))
-	const rows = await db(brainAgent(agent).env)
-		.select({
-			id: document.id,
-			status: document.status,
-			dreamingStatus: document.dreamingStatus,
-		})
-		.from(document)
-		.where(and(eq(document.orgId, agent.name), inArray(document.id, ids)))
+	const rows = [
+		...(await documentStatuses(brainAgent(agent).env, ids)).values(),
+	]
 	if (rows.some((row) => row.status === "failed")) return "failed"
 	if (
 		rows.length === ids.length &&

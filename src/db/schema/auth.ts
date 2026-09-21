@@ -1,6 +1,12 @@
 import { generateId } from "@repo/lib/generate-id"
 import { relations } from "drizzle-orm"
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import {
+	index,
+	integer,
+	sqliteTable,
+	text,
+	uniqueIndex,
+} from "drizzle-orm/sqlite-core"
 import type { BrainProactivitySettings } from "./common"
 
 /**
@@ -11,7 +17,7 @@ import type { BrainProactivitySettings } from "./common"
 export const user = sqliteTable("user", {
 	id: text("id").primaryKey().$defaultFn(generateId),
 	name: text("name").notNull().default(""),
-	email: text("email").notNull(),
+	email: text("email").notNull().unique(),
 	image: text("image"),
 	deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
 	createdAt: integer("created_at", { mode: "timestamp" })
@@ -51,6 +57,7 @@ export const member = sqliteTable(
 			.$defaultFn(() => new Date()),
 	},
 	(table) => [
+		uniqueIndex("uniq_member_org_user").on(table.organizationId, table.userId),
 		index("idx_member_org_id").on(table.organizationId),
 		index("idx_member_user_id").on(table.userId),
 	],

@@ -21,3 +21,7 @@ export type LeaseRequestOutcome = string
 export function captureActivationRung(..._args: unknown[]): void {}
 export function captureLeaseRequest(..._args: unknown[]): void {}
 export function captureBrainSkillEvent(..._args: unknown[]): void {}
+
+export function identifyMemberProfile(..._args: unknown[]): void {}
+
+export function identifyCompanyGroup(..._args: unknown[]): void {}

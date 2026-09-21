@@ -68,7 +68,9 @@ export async function startMcpConnect(
 			return { ok: false, error: "unsupported embedded provider", status: 400 }
 		}
 		const pause = connectorPause(slug)
-		if (pause) return { ok: false, error: pause.message, status: 503 }
+		if (pause.paused) {
+			return { ok: false, error: pause.message ?? "paused", status: 503 }
+		}
 		if (args.shared || args.serverUrl) {
 			return {
 				ok: false,
@@ -230,11 +232,7 @@ export function buildMcpCallbackUrl(env: Env, reqUrl: string): string {
 
 function trustedRedirectOrigins(env: Env): string[] {
 	const origins = new Set<string>(getConfig().trustedOrigins)
-	for (const u of [
-		env.PUBLIC_URL,
-		env.FRONTEND_URL,
-		env.CONSUMER_APP_URL,
-	]) {
+	for (const u of [env.PUBLIC_URL, env.CONSUMER_APP_URL]) {
 		if (!u) continue
 		try {
 			origins.add(new URL(u).origin)
