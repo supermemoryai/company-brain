@@ -61,7 +61,7 @@ function resolveModel(modelName: SupportedModel, env: Env): SupportedModel {
 	const fallbackProvider = availableProviders(env)[0]
 	if (!fallbackProvider) {
 		const error = new Error(
-			"No model provider key is set. Add one of ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or XAI_API_KEY.",
+			"No model provider key is set. Set MODEL_API_KEY to an Anthropic, OpenAI, Google or xAI key.",
 		)
 		captureException(error, { tags: { feature: "company_brain" } })
 		throw error

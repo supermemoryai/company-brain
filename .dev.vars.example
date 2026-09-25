@@ -3,13 +3,19 @@
 # Get one at https://console.supermemory.ai
 SUPERMEMORY_API_KEY=""
 
-# One model provider key. Set whichever you have; the brain picks the first one
-# it finds. Anthropic is the default and what the prompts were tuned against.
-ANTHROPIC_API_KEY=""
-OPENAI_API_KEY=""
-GOOGLE_GENERATIVE_AI_API_KEY=""
+# One model API key: Anthropic, OpenAI, Google or xAI. Paste whichever you have;
+# the brain tells them apart by prefix. The prompts were tuned against Anthropic
+# and xAI models.
+MODEL_API_KEY=""
+
+# Or set providers explicitly, e.g. to give it more than one:
+# ANTHROPIC_API_KEY=""
+# OPENAI_API_KEY=""
+# GOOGLE_GENERATIVE_AI_API_KEY=""
+# XAI_API_KEY=""
 
 # ── Optional ──────────────────────────────────────────────────────────────────
 # Sandbox tools (shell, git, files) run on Cloudflare Sandbox containers by
-# default; local dev needs Docker running. Set this to use Daytona instead.
-DAYTONA_API_KEY=""
+# default; local dev needs Docker running. To use Daytona instead, uncomment
+# this and set it (or add it later with `wrangler secret put DAYTONA_API_KEY`).
+# DAYTONA_API_KEY=""
