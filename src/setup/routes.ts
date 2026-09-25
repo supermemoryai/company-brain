@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { db } from "@repo/db"
 import { organization } from "@repo/db/schema/auth"
 import { ROLE_ADMIN, roleAtLeast } from "@repo/lib/permissions"
+import { applyMigrations, migrationStatus } from "../db/migrate"
 import { availableProviders } from "@/lib/brain/turn/brain-model"
 import type { AppContext } from "@/types"
 import { slackCredentials, storeSlackCredentials } from "./config-store"
@@ -12,13 +13,13 @@ export const setupRoutes = new Hono<AppContext>()
 	.get("/", async (c) => {
 		const origin = c.env.PUBLIC_URL ?? new URL(c.req.url).origin
 		const providers = availableProviders(c.env)
-		// A query failing here almost always means the migrations never ran.
-		const databaseReady = await db(c.env)
-			.select({ id: organization.id })
-			.from(organization)
-			.limit(1)
-			.then(() => true)
-			.catch(() => false)
+		const migrations = await migrationStatus(c.env).catch((error) => ({
+			applied: [] as string[],
+			pending: [] as string[],
+			error: error instanceof Error ? error.message : String(error),
+		}))
+		const databaseReady =
+			!("error" in migrations) && migrations.pending.length === 0
 		const slack = databaseReady
 			? await slackCredentials(c.env).catch(() => null)
 			: null
@@ -26,6 +27,10 @@ export const setupRoutes = new Hono<AppContext>()
 			setupPage({
 				origin,
 				databaseReady,
+				pendingMigrations: migrations.pending,
+				migrationError:
+					c.req.query("migrate_error") ??
+					("error" in migrations ? migrations.error : null),
 				hasMemoryKey: Boolean(c.env.SUPERMEMORY_API_KEY?.trim()),
 				providers,
 				slackConfigured: Boolean(slack),
@@ -37,6 +42,17 @@ export const setupRoutes = new Hono<AppContext>()
 	.get("/manifest.json", (c) => {
 		const origin = c.env.PUBLIC_URL ?? new URL(c.req.url).origin
 		return c.json(slackAppManifest(origin, "company-brain"))
+	})
+	// Normally the worker migrates itself on first request; this is the manual
+	// retry. It only ever applies the migrations bundled into this build.
+	.post("/migrate", async (c) => {
+		try {
+			await applyMigrations(c.env)
+			return c.redirect("/setup")
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error)
+			return c.redirect(`/setup?migrate_error=${encodeURIComponent(message)}`)
+		}
 	})
 	.post("/slack", async (c) => {
 		// Before anyone has signed in there is nobody to ask. After that, only an

@@ -86,17 +86,17 @@ Click **Deploy to Cloudflare** above. It asks for two secrets:
   against Anthropic and xAI models, and any of the four works.
 
 Everything else is provisioned for you: D1, KV, the Durable Objects, Workers AI,
-and the sandbox container the brain runs code in. Containers need the Workers
-Paid plan.
+and the sandbox container the brain runs code in. The database sets itself up
+on the first request, and every deploy after that migrates it automatically.
+Containers need the Workers Paid plan.
 
 Then:
 
-1. Apply the database migrations once: `bun run db:migrate`.
-2. Open `/setup` on your new worker. It checks what's configured, hands you a
+1. Open `/setup` on your new worker. It checks what's configured, hands you a
    Slack app manifest with your URLs already filled in, and takes the three
    Slack values back.
-3. **Sign in with Slack.** The first person to sign in owns the deployment.
-4. **Install to Slack**, and say hi to the bot.
+2. **Sign in with Slack.** The first person to sign in owns the deployment.
+3. **Install to Slack**, and say hi to the bot.
 
 ## Learn more
 
@@ -109,7 +109,6 @@ proactivity, automations, connectors and a set of real use cases. The
 ```sh
 bun install
 cp .dev.vars.example .dev.vars   # fill in the two keys
-bun run db:migrate:local
 bun run dev
 ```
 
@@ -117,6 +116,10 @@ Docker has to be running, since the sandbox is a container. Slack has to reach
 your machine, so point a tunnel at the dev server, set `PUBLIC_URL` in
 `.dev.vars` to the tunnel's URL, and create the Slack app from the tunnel's
 `/setup` page.
+
+After changing the schema in `src/db/schema`, run `bun run db:generate`. It
+writes the migration and bundles it into the worker, which applies it on its
+next request.
 
 ## How it works
 
