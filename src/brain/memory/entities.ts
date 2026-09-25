@@ -83,7 +83,7 @@ async function findEntity(
 			{ key: "type", value: ENTITY_TYPE },
 			// Scope reads to the current generation so a reset's batched wipe
 			// can't surface a pre-reset entity that isn't deleted yet.
-			{ key: "sm_brain_reset_epoch", value: String(resetEpoch) },
+			{ key: "brain_reset_epoch", value: String(resetEpoch) },
 		],
 		includeContent: false,
 		limit: 100,
@@ -165,7 +165,7 @@ async function writeEntity(
 			metadata: {
 				type: ENTITY_TYPE,
 				sm_source: "company-brain",
-				sm_brain_reset_epoch: resetEpoch,
+				brain_reset_epoch: resetEpoch,
 				title: entity.canonical,
 				canonical: entity.canonical,
 				...(entity.domain ? { domain: entity.domain } : {}),

@@ -1,7 +1,9 @@
 import { preservedInternalMetadataKeys } from "./product-policy"
 
-export const BRAIN_TAGS_METADATA_KEY = "sm_brain_tags"
-export const BRAIN_TAG_LABELS_METADATA_KEY = "sm_brain_tag_labels"
+// supermemory reserves the sm_ prefix and drops those keys from API writes, so
+// the brain's own keys go without it.
+export const BRAIN_TAGS_METADATA_KEY = "brain_tags"
+export const BRAIN_TAG_LABELS_METADATA_KEY = "brain_tag_labels"
 
 export function filterMemoryEntryMetadata(
 	metadata: Record<string, unknown> | null | undefined,

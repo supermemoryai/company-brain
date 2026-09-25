@@ -128,7 +128,7 @@ export async function searchBrain(
 
 // Scope a semantic search to memories carrying ANY of the given canonical brain
 // tag keys (person_/topic_/project_/customer_/team_), matched against the
-// sm_brain_tags metadata array. Returns undefined when no focus is requested so
+// brain_tags metadata array. Returns undefined when no focus is requested so
 // the search stays unfiltered.
 function buildBrainFocusFilter(focusTags?: string[]): Query | undefined {
 	const keys = [

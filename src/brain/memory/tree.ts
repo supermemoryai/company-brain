@@ -1,9 +1,10 @@
 import { runInDbScope } from "@repo/db"
+import { getBrainDocument } from "../../memory/documents"
 import {
-	getBrainDocument,
-	updateBrainDocumentMetadata,
-} from "../../memory/documents"
-import { documentStatuses } from "../../memory/memories"
+	documentStatuses,
+	memoriesForDocuments,
+	updateMemoryMetadata,
+} from "../../memory/memories"
 import type { CompanyBrainAgent } from "../turn/agent"
 import {
 	BRAIN_TAG_LABELS_METADATA_KEY,
@@ -343,7 +344,7 @@ export function repointBrainMemoryNodes(
 	return moved
 }
 
-// Keep tag-based recall (sm_brain_tags) in sync with node repoints from a split.
+// Keep tag-based recall (brain_tags) in sync with node repoints from a split.
 // ADD the child key rather than replacing the parent: a memory can have several
 // source documents, so removing the parent could strip a tag another still-parent
 // source justifies. Adds commute, so overlapping child updates don't race.
@@ -366,13 +367,12 @@ export async function repointBrainMemoryMetadata(
 	const oldKey = normalizeBrainTagKey(oldNodePath)
 	const newKey = normalizeBrainTagKey(newPath)
 	if (!ids.length || oldKey === newKey) return
-	// Tags live on the documents the brain wrote, so a split re-tags those
-	// rather than the memories supermemory derived from them.
-	const rows = (
-		await mapWithConcurrency(ids, POSTGRES_QUERY_CONCURRENCY, (id) =>
-			getBrainDocument(env, id),
-		)
-	).filter((row): row is NonNullable<typeof row> => row !== null)
+	// Re-tag the memories derived from the node's documents, which is where
+	// tag-scoped reads look. Their documents keep the original tags.
+	const rows = (await memoriesForDocuments(env, ids)).filter(
+		(row): row is typeof row & { containerTag: string } =>
+			row.containerTag !== null,
+	)
 	const updates = rows.flatMap((row) => {
 		const metadata = (row.metadata ?? {}) as Record<string, unknown>
 		const keys = metadata[BRAIN_TAGS_METADATA_KEY]
@@ -386,6 +386,8 @@ export async function repointBrainMemoryMetadata(
 		return [
 			{
 				id: row.id,
+				containerTag: row.containerTag,
+				memory: row.memory,
 				metadata: {
 					...metadata,
 					[BRAIN_TAGS_METADATA_KEY]: nextKeys,
@@ -397,7 +399,7 @@ export async function repointBrainMemoryMetadata(
 		]
 	})
 	await mapWithConcurrency(updates, POSTGRES_QUERY_CONCURRENCY, (update) =>
-		updateBrainDocumentMetadata(env, update.id, update.metadata),
+		updateMemoryMetadata(env, update),
 	)
 }
 
@@ -521,34 +523,26 @@ export async function hydrateLiveBrainNodeMappings(
 			documentIds: chunk.map((mapping) => mapping.documentId),
 		})),
 	)
-	// A node's content used to be the memory entries derived from its documents.
-	// The public API does not expose that derivation, so a node hydrates from
-	// the documents the brain wrote under it — the same substance, one level up.
+	// A node's content is the memories supermemory derived from the documents
+	// filed under it, kept to the container the mapping belongs to.
 	const pages = await mapWithConcurrency(
 		batches,
 		POSTGRES_QUERY_CONCURRENCY,
-		async ({ documentIds }) => {
-			const documents = await mapWithConcurrency(
-				documentIds,
-				POSTGRES_QUERY_CONCURRENCY,
-				(id) => getBrainDocument(env, id),
-			)
-			return documents
-				.flatMap((doc) => {
-					const text = doc?.content?.trim()
-					if (!doc || !text) return []
-					const updatedAt = new Date(doc.createdAt)
-					if (range?.before && updatedAt >= range.before) return []
-					if (range?.after && updatedAt < range.after) return []
-					return [
-						{
-							documentId: doc.id,
-							memoryId: doc.id,
-							memory: text,
-							updatedAt,
-						},
-					]
+		async ({ containerTag, documentIds }) => {
+			const memories = await memoriesForDocuments(env, documentIds)
+			return memories
+				.filter((memory) => {
+					if (memory.containerTag !== containerTag) return false
+					if (range?.before && memory.updatedAt >= range.before) return false
+					if (range?.after && memory.updatedAt < range.after) return false
+					return true
 				})
+				.map((memory) => ({
+					documentId: memory.documentId,
+					memoryId: memory.id,
+					memory: memory.memory,
+					updatedAt: memory.updatedAt,
+				}))
 				.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 				.slice(0, Math.max(1, limitPerChunk))
 		},

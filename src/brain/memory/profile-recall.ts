@@ -27,6 +27,11 @@ const AMBIENT_PERSON_COUNT = 8
 // ambient-injected; they stay reachable through search/recall.
 const AMBIENT_CHANNEL_CANDIDATE_LIMIT = 250
 
+// A person's or channel's profile is its bucketed memories; unbucketed tagged
+// facts stay reachable through search instead of being injected every turn.
+const onlyBucketed = <T extends { buckets: string[] }>(rows: T[]) =>
+	rows.filter((row) => row.buckets.length > 0)
+
 const estimateTokens = (s: string) => Math.ceil(s.length / 4)
 
 export type BrainProfileRecallInput = {
@@ -77,28 +82,30 @@ export async function buildAmbientBrainProfileContext(
 		const [taggedRows, channelRows, ...personRows] = await Promise.all([
 			listBrainMemories(env, {
 				containerTags: containers,
-				query:
-					"durable facts about this organization: its teams, projects, customers, products and how it works",
 				limit: AMBIENT_STATIC_CANDIDATE_LIMIT,
-			}),
+				withBuckets: true,
+			}).then((rows) =>
+				// Most-corroborated first, then newest, as the hosted query ordered.
+				rows.sort((a, b) => b.sourceCount - a.sourceCount),
+			),
 			channelTag
 				? listBrainMemories(env, {
 						containerTags: containers,
-						query: "what this channel is about and what happens in it",
 						tagKeys: [channelTag],
 						limit: AMBIENT_CHANNEL_CANDIDATE_LIMIT,
-					})
+						withBuckets: true,
+					}).then(onlyBucketed)
 				: Promise.resolve([] as AmbientProfileRow[]),
 			...people.map((person) =>
 				listBrainMemories(env, {
 					containerTags: containers,
-					query: "who this person is, what they work on and how they work",
 					tagKeys: [personBrainTagKey(person.slackUserId)],
 					limit:
 						person.role === "asker"
 							? AMBIENT_ASKER_CANDIDATE_LIMIT
 							: AMBIENT_MENTIONED_CANDIDATE_LIMIT,
-				}),
+					withBuckets: true,
+				}).then(onlyBucketed),
 			),
 		])
 
