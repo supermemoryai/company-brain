@@ -1,3 +1,4 @@
+<img width="4000" height="1405" alt="Site BG" src="https://github.com/user-attachments/assets/9ee4f71f-0612-452a-8d58-862aee510086" />
 # Company Brain
 
 **A teammate in your Slack that remembers everything your team says, and can go do the work.**
