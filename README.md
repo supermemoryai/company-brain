@@ -1,28 +1,39 @@
-<img width="4000" height="1405" alt="Site BG" src="https://github.com/user-attachments/assets/9ee4f71f-0612-452a-8d58-862aee510086" />
-# Company Brain
+<img width="4000" height="1405" alt="Company Brain" src="https://github.com/user-attachments/assets/9ee4f71f-0612-452a-8d58-862aee510086" />
 
-**A teammate in your Slack that truly knows and understands your company, and can do anything.**
+<h1 align="center">Company Brain</h1>
 
-A few weeks ago, we discontinued our [Company brain product](https://x.com/supermemory/status/2081781184980246897?s=20) at [supermemory](https://supermemory.ai).
+<p align="center">
+  <strong>A teammate in your Slack that truly knows and understands your company, and can do anything.</strong>
+</p>
 
-It was a paid product, with thousands of users. Now, it's free and open source!
+<p align="center">
+  <a href="#deploy-in-five-minutes">Deploy</a> ·
+  <a href="docs/guide/README.md">User guide</a> ·
+  <a href="docs/guide/permissions.md">Permissions</a> ·
+  <a href="docs/guide/use-cases/overview.md">Use cases</a> ·
+  <a href="https://supermemory.link/discord">Discord</a>
+</p>
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/supermemoryai/company-brain)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="Apache 2.0" /></a>
+  <a href="https://supermemory.ai"><img src="https://img.shields.io/badge/memory-supermemory-blue?style=flat-square" alt="Memory by supermemory" /></a>
+  <a href="https://developers.cloudflare.com/workers/"><img src="https://img.shields.io/badge/runs%20on-Cloudflare%20Workers-f38020?style=flat-square" alt="Runs on Cloudflare Workers" /></a>
+</p>
 
-Features:
-- **Remembers.** Decisions, projects, owners and context from the channels it's in, kept current as people talk. No one has to write anything down.
-- **Answers from what your team actually said.** Not from the internet and not from guesswork: from your own conversations and connected tools.
-- **Acts in your tools.** Connect GitHub, Linear, Notion, Google Workspace and hundreds of other MCP servers. It opens issues, reads PRs, searches docs, and does the actual task instead of describing it.
-- **Speaks up on its own.** It chimes in when a conversation needs something it knows. You decide how chatty it is, org-wide and per channel.
-- **Runs code.** It gets its own sandbox: it clones a repo, runs commands and scripts, and hands back files like charts, CSVs and PDFs right in Slack.
-- **Works while you sleep.** Scheduled automations post digests and summaries to a channel or your DMs, and it researches topics on its own when it decides something is worth looking into.
-- **Learns your team's way of doing things.** Skills teach it your repeatable processes, formats and voice. A workspace prompt sets how it behaves everywhere.
+<p align="center">
+  <strong>Used to be a paid product with thousands of users. Now it's free and open source.</strong><br/>
+  <a href="https://x.com/supermemory/status/2081781184980246897?s=20">Read the announcement →</a>
+</p>
 
-> **#product**
->
-> **You:** @brain what did we decide about pricing for the enterprise plan?
->
-> **Company Brain:** You and Mahesh landed on usage-based only, no seat fees, in yesterday's #product huddle. Sam still owes the updated pricing page.
+<p align="center">
+  <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/supermemoryai/company-brain"><img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" /></a>
+</p>
+
+---
+
+A few weeks ago, we discontinued our [Company Brain product](https://x.com/supermemory/status/2081781184980246897?s=20) at [supermemory](https://supermemory.ai). This is that product, the whole thing, open sourced and rebuilt to run on your own Cloudflare account.
+
+Your team's knowledge is scattered across Slack threads, docs, tickets and people's heads. Company Brain sits in Slack, remembers what your team says, and answers from it. Then it goes and does the work: opens the issue, reads the PR, digs into the repo. And when a conversation needs something it knows, it speaks up on its own.
 
 > **#eng**
 >
@@ -30,44 +41,79 @@ Features:
 >
 > **Company Brain:** Not fully down. `api/search` is elevated, 42 errors in the last 15 minutes, and Kush is already on it. Probably this morning's deploy.
 
-Nobody mentioned the bot in that second thread. It spoke up because it knew the answer.
+Nobody mentioned the bot. It spoke up because it knew the answer.
+
+| | |
+|---|---|
+| 🧠 **Remembers** | Decisions, projects, owners and context from the channels it's in, kept current as people talk. No one has to write anything down. |
+| 💬 **Answers from your team** | Not from the internet, not from guesswork: from your own conversations and connected tools. |
+| 🛠️ **Acts in your tools** | GitHub, Linear, Notion, Google Workspace and hundreds more over MCP. It opens the issue instead of telling you to. |
+| 📣 **Speaks up** | Chimes in when a conversation needs something it knows. You decide how chatty it is, org-wide and per channel. |
+| 💻 **Runs code** | Its own sandbox: clones repos, runs scripts, and hands back charts, CSVs and PDFs right in Slack. |
+| 🌙 **Works while you sleep** | Scheduled digests to a channel or your DMs, plus research it kicks off on its own. |
+| 🎓 **Learns your way** | Skills teach it your processes, formats and voice. A workspace prompt sets how it behaves everywhere. |
+
+---
 
 ## Private by design
 
-Memory isn't one big bucket. It's a permissions graph:
+Memory isn't one big bucket. It's a permissions graph, and the brain only ever reads with the asker's own access.
 
-- **Public channels** feed a shared brain the whole org can draw on.
-- **Private channels** get their own memory, visible only to people in them.
-- **Your DMs** build a personal memory that only you can reach.
+| Where you ask | What it can draw on |
+|---|---|
+| **A public channel** | The shared brain everyone in the org can see |
+| **A private channel** | That channel's memory, plus the shared brain |
+| **Your DMs** | Your personal memory, every private channel you're in, and the shared brain |
 
-The bot only ever reads with the asker's own access, so it can't leak something you couldn't see yourself. Tool access works the same way: writes always run under your own connection, and when a request needs a tool only a teammate has connected, it asks them first with an approve or deny card. Nothing is granted silently.
+So it can't leak something you couldn't see yourself. Tool access works the same way: writes always run under your own connection, and when a request needs a tool only a teammate has connected, it asks them first with an approve or deny card. Nothing is granted silently.
 
-TLDR: The brain inherits the employee's permission models, and is aware of channels and when to not disclose information.
+---
 
-## Yours to run
+## Get started
 
-- **Your infrastructure.** It runs on your Cloudflare account. Your memory lives in your own supermemory account.
-- **Your model.** Bring an Anthropic, OpenAI, Google or xAI key and pay the provider directly. No markup.
-- **Your app.** A web app at `/` shows the brain's home, a live graph of what it remembers, and settings for tools, models, proactivity, automations and skills. Everyone signs in with Slack. Only owners and admins can change org-wide settings.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## Deploy
+<h3>💬 I want it in my Slack</h3>
 
-Click **Deploy to Cloudflare** above. It asks for two secrets:
+One click to deploy, two API keys, and a setup page that walks you through the Slack app. The database sets itself up.
 
-- `SUPERMEMORY_API_KEY`: where the brain reads and writes memory. Get one at [console.supermemory.ai](https://console.supermemory.ai).
-- One model key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or `XAI_API_KEY`. The prompts were tuned against Anthropic and xAI models, and any of the four works.
+**[→ Deploy in five minutes](#deploy-in-five-minutes)**
 
-Everything else is provisioned for you: D1, KV, the Durable Objects, Workers AI, and the sandbox container the brain runs code in. The database sets itself up on the first request, and every deploy after that migrates it automatically. Containers need the Workers Paid plan.
+</td>
+<td width="50%" valign="top">
 
-Then:
+<h3>🔧 I want to hack on it</h3>
 
-1. Open `/setup` on your new worker. It checks what's configured, hands you a Slack app manifest with your URLs already filled in, and takes the three Slack values back.
-2. **Sign in with Slack.** The first person to sign in owns the deployment.
-3. **Install to Slack**, and say hi to the bot.
+TypeScript on Cloudflare Workers, Durable Objects and D1, with memory on [supermemory](https://supermemory.ai). Run it all locally.
 
-## Learn more
+**[→ Local development](#local-development)**
 
-The [user guide](docs/guide/README.md) covers the permissions graph, proactivity, automations, connectors and a set of real use cases. The [architecture notes](docs/README.md) go deeper on how the agent works.
+</td>
+</tr>
+</table>
+
+---
+
+## Deploy in five minutes
+
+**1. Click deploy.** It asks for two secrets:
+
+- `SUPERMEMORY_API_KEY`: where the brain keeps its memory. Get one at [console.supermemory.ai](https://console.supermemory.ai).
+- One model key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or `XAI_API_KEY`. You pay the provider directly, no markup.
+
+Everything else is provisioned for you: D1, KV, Durable Objects, Workers AI, and the container the brain runs code in. Containers need the Workers Paid plan.
+
+**2. Open `/setup`** on your new worker. It checks your keys, hands you a Slack app manifest with your URLs already filled in, and takes the Slack credentials back.
+
+**3. Sign in with Slack.** The first person to sign in owns the deployment.
+
+**4. Install to Slack**, and say hi. 👋
+
+Your team signs in with Slack at `/` to see the brain's home, a live graph of everything it remembers, and settings for tools, models, proactivity, automations and skills.
+
+---
 
 ## Local development
 
@@ -80,3 +126,15 @@ bun run dev
 Docker has to be running, since the sandbox is a container. Slack has to reach your machine, so point a tunnel at the dev server, set `PUBLIC_URL` in `.dev.vars` to the tunnel's URL, and create the Slack app from the tunnel's `/setup` page.
 
 After changing the schema in `src/db/schema`, run `bun run db:generate`. It writes the migration and bundles it into the worker, which applies it on its next request.
+
+---
+
+<p align="center">
+  <a href="docs/guide/README.md">User guide</a> ·
+  <a href="docs/README.md">Architecture notes</a> ·
+  <a href="https://supermemory.ai">supermemory</a>
+</p>
+
+<p align="center">
+  Built by <a href="https://supermemory.ai">supermemory</a>. Apache 2.0.
+</p>
