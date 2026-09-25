@@ -29,7 +29,47 @@ const configuredPublicUrl = new WeakMap<object, boolean>()
  * Runs before any handler, and inside the agent, which has no request to read
  * an origin from.
  */
+/** Which provider a model API key belongs to, from its prefix. */
+export function providerForModelKey(
+	key: string,
+): "anthropic" | "openai" | "google" | "xai" | null {
+	if (key.startsWith("sk-ant-")) return "anthropic"
+	if (key.startsWith("xai-")) return "xai"
+	if (key.startsWith("AIza")) return "google"
+	if (key.startsWith("sk-")) return "openai"
+	return null
+}
+
+/**
+ * The deploy button prompts for every secret it knows about, so a deployment
+ * asks for one MODEL_API_KEY and it lands on whichever provider it belongs to.
+ * A provider-specific variable set explicitly always wins.
+ */
+function applyModelApiKey(env: Env): void {
+	const key = env.MODEL_API_KEY?.trim()
+	if (!key) return
+	switch (providerForModelKey(key)) {
+		case "anthropic":
+			env.ANTHROPIC_API_KEY ||= key
+			return
+		case "openai":
+			env.OPENAI_API_KEY ||= key
+			return
+		case "google":
+			env.GOOGLE_GENERATIVE_AI_API_KEY ||= key
+			return
+		case "xai":
+			env.XAI_API_KEY ||= key
+			return
+		default:
+			console.warn(
+				"[setup] MODEL_API_KEY doesn't look like an Anthropic, OpenAI, Google or xAI key; set the provider's own variable instead.",
+			)
+	}
+}
+
 export async function hydrateSecrets(env: Env): Promise<void> {
+	applyModelApiKey(env)
 	if (!env.ENCRYPTION_SECRET?.trim()) {
 		env.ENCRYPTION_SECRET = await encryptionSecret(env)
 	}
