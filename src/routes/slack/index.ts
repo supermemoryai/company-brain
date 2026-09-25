@@ -1153,13 +1153,11 @@ export const slackRoutes = new Hono<AppContext>()
 			return c.redirect(target.toString(), 302)
 		}
 
-		// Remember where to send the user back (the app that opened the flow),
-		// so dev/prod both land on the right home page.
-		let returnTo = "https://app.supermemory.ai"
-		const referer = c.req.header("referer")
-		try {
-			if (referer) returnTo = new URL(referer).origin
-		} catch {}
+		// The app UI is served by this worker, so the flow always returns here.
+		const returnTo = (c.env.PUBLIC_URL || new URL(c.req.url).origin).replace(
+			/\/$/,
+			"",
+		)
 
 		const state = crypto.randomUUID()
 		await c.env.BRAIN_KV.put(
@@ -1254,7 +1252,7 @@ export const slackRoutes = new Hono<AppContext>()
 			}),
 		)
 
-		const base = returnTo ?? "https://app.supermemory.ai"
+		const base = returnTo || c.env.PUBLIC_URL || new URL(c.req.url).origin
 		const dest = new URL(base)
 		dest.pathname = "/"
 		dest.searchParams.set("slack", "connected")

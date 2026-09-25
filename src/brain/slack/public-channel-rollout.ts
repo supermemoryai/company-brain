@@ -1871,6 +1871,7 @@ async function introduceStep(
 		orgId: agent.name,
 		env: brainAgent(agent).env,
 	})
+	const proactivityUrl = `${brainAgent(agent).env.PUBLIC_URL.replace(/\/$/, "")}/configure/proactivity`
 	const posted = await postSlackMessageIdempotent(
 		botToken,
 		channel.channel_id,
@@ -1886,7 +1887,7 @@ async function introduceStep(
 				elements: [
 					{
 						type: "mrkdwn",
-						text: "I'll chime in when the conversation is something I can help with. Not wanted in this channel? Tune it at <https://app.supermemory.ai/configure/proactivity|app.supermemory.ai/configure/proactivity> _(admin only)_.",
+						text: `I'll chime in when the conversation is something I can help with. Not wanted in this channel? Tune it at <${proactivityUrl}|${proactivityUrl.replace(/^https?:\/\//, "")}> _(admin only)_.`,
 					},
 				],
 			},

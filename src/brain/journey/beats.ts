@@ -128,12 +128,14 @@ const secondAskerBeat: JourneyBeat = {
 
 const toolWorkspaceBeat: JourneyBeat = {
 	rung: "tool_workspace",
-	send: (agent) =>
-		postHome(
+	send: (agent) => {
+		const tools = `${brainAgent(agent).env.PUBLIC_URL.replace(/\/$/, "")}/configure`
+		return postHome(
 			agent,
 			"tool_workspace",
-			"This one needs an admin: connect a workspace tool (GitHub, Linear, Google Drive) at <https://app.supermemory.ai/configure/tools|app.supermemory.ai/configure/tools> and share it with the org. Once one is in, my answers and digests can cite what's actually happening in it, not just Slack.",
-		),
+			`This one needs an admin: connect a workspace tool (GitHub, Linear, Google Drive) at <${tools}|${tools.replace(/^https?:\/\//, "")}> and share it with the org. Once one is in, my answers and digests can cite what's actually happening in it, not just Slack.`,
+		)
+	},
 }
 
 const digestBeat: JourneyBeat = {

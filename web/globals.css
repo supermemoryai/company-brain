@@ -1,0 +1,504 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Mono&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "./";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+
+@theme {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--font-sans:
+		"Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif,
+		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+	--font-serif:
+		"Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif,
+		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+	--font-mono: var(--font-mono);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+	--radius: 0.75rem;
+	--background: oklch(0.9846 0.0017 247.8389);
+	--foreground: oklch(0.2744 0.0073 285.9081);
+	--card: oklch(0.9851 0 0);
+	--card-foreground: oklch(0.2744 0.0073 285.9081);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.2744 0.0073 285.9081);
+	--primary: oklch(0.614 0.2014 258.1073);
+	--primary-foreground: oklch(0.9851 0 0);
+	--secondary: oklch(0.9378 0.0296 262.5395);
+	--secondary-foreground: oklch(0.614 0.2014 258.1073);
+	--muted: oklch(0.9846 0.0017 247.8389);
+	--muted-foreground: oklch(0.5693 0 0);
+	--accent: oklch(0.92 0.0054 286.2936);
+	--accent-foreground: oklch(0.2744 0.0073 285.9081);
+	--destructive: oklch(0.6368 0.2078 25.3313);
+	--border: oklch(0.9366 0.0017 247.8401);
+	--input: oklch(0.9702 0 0);
+	--ring: oklch(0 0 0);
+	--chart-1: oklch(0.7197 0.1448 266.6983);
+	--chart-2: oklch(0.8101 0.1488 148.2032);
+	--chart-3: oklch(0.7507 0.1353 58.4182);
+	--chart-4: oklch(0.7253 0.1752 349.7607);
+	--chart-5: oklch(0.7535 0.139 232.6615);
+	--sidebar: oklch(0.9851 0 0);
+	--sidebar-foreground: oklch(0.2744 0.0073 285.9081);
+	--sidebar-primary: oklch(0.9851 0 0);
+	--sidebar-primary-foreground: oklch(0.2744 0.0073 285.9081);
+	--sidebar-accent: oklch(0.92 0.0054 286.2936);
+	--sidebar-accent-foreground: oklch(0.2744 0.0073 285.9081);
+	--sidebar-border: oklch(0.9366 0.0017 247.8401);
+	--sidebar-ring: oklch(0.9889 0.0053 17.2475);
+	--destructive-foreground: oklch(0.967 0.0029 264.5419);
+	--font-sans: Space Grotesk, ui-sans-serif, sans-serif, system-ui;
+	--font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+	--font-mono: Space Mono, ui-monospace, monospace;
+	--shadow-color: oklch(0 0 0);
+	--shadow-opacity: 0.04;
+	--shadow-blur: 3px;
+	--shadow-spread: 0px;
+	--shadow-offset-x: 0;
+	--shadow-offset-y: 1px;
+	--letter-spacing: -0.01em;
+	--spacing: 0.25rem;
+	--shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.02);
+	--shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.02);
+	--shadow-sm:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+	--shadow:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+	--shadow-md:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 2px 4px -1px hsl(0 0% 0% / 0.04);
+	--shadow-lg:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 4px 6px -1px hsl(0 0% 0% / 0.04);
+	--shadow-xl:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 8px 10px -1px hsl(0 0% 0% / 0.04);
+	--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1);
+	--tracking-normal: -0.01em;
+}
+
+.dark {
+	--background: oklch(0.1487 0.0073 258.0408);
+	--foreground: oklch(0.967 0.0029 264.5419);
+	--card: oklch(0.1487 0.0073 258.0408);
+	--card-foreground: oklch(0.967 0.0029 264.5419);
+	--popover: oklch(0.2264 0 0);
+	--popover-foreground: oklch(0.985 0 0);
+	--primary: oklch(0.614 0.2014 258.1073);
+	--primary-foreground: oklch(0.967 0.0029 264.5419);
+	--secondary: oklch(0.967 0.0029 264.5419);
+	--secondary-foreground: oklch(0.1487 0.0073 258.0408);
+	--muted: oklch(0.1482 0.0055 247.8035);
+	--muted-foreground: oklch(0.708 0 0);
+	--accent: oklch(0.3012 0 0);
+	--accent-foreground: oklch(0.967 0.0029 264.5419);
+	--destructive: oklch(0.6368 0.2078 25.3313);
+	--border: oklch(0.3715 0 0);
+	--input: oklch(0.262 0.0074 285.8781);
+	--ring: oklch(1 0 0);
+	--chart-1: oklch(0.7197 0.1448 266.6983);
+	--chart-2: oklch(0.8101 0.1488 148.2032);
+	--chart-3: oklch(0.7507 0.1353 58.4182);
+	--chart-4: oklch(0.7253 0.1752 349.7607);
+	--chart-5: oklch(0.7535 0.139 232.6615);
+	--sidebar: oklch(0.2264 0 0);
+	--sidebar-foreground: oklch(0.967 0.0029 264.5419);
+	--sidebar-primary: oklch(0.2264 0 0);
+	--sidebar-primary-foreground: oklch(0.967 0.0029 264.5419);
+	--sidebar-accent: oklch(0.3012 0 0);
+	--sidebar-accent-foreground: oklch(0.967 0.0029 264.5419);
+	--sidebar-border: oklch(0.3715 0 0);
+	--sidebar-ring: oklch(0 0 0);
+	--destructive-foreground: oklch(0.967 0.0029 264.5419);
+	--radius: 0.75rem;
+	--font-sans: Space Grotesk, ui-sans-serif, sans-serif, system-ui;
+	--font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+	--font-mono: Space Mono, ui-monospace, monospace;
+	--shadow-color: oklch(0 0 0);
+	--shadow-opacity: 0.04;
+	--shadow-blur: 3px;
+	--shadow-spread: 0px;
+	--shadow-offset-x: 0;
+	--shadow-offset-y: 1px;
+	--letter-spacing: -0.01em;
+	--spacing: 0.25rem;
+	--shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.02);
+	--shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.02);
+	--shadow-sm:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+	--shadow:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+	--shadow-md:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 2px 4px -1px hsl(0 0% 0% / 0.04);
+	--shadow-lg:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 4px 6px -1px hsl(0 0% 0% / 0.04);
+	--shadow-xl:
+		0 1px 3px 0px hsl(0 0% 0% / 0.04), 0 8px 10px -1px hsl(0 0% 0% / 0.04);
+	--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1);
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-sm-mine-shaft) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+	width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	background-color: var(--color-sm-mine-shaft);
+	border-radius: 9999px;
+	transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+	background-color: var(--color-sm-tundora);
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+/* Memory Drawer Scrollbar Styles */
+.memory-drawer-scroll::-webkit-scrollbar {
+	width: 6px;
+}
+
+.memory-drawer-scroll::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.02);
+}
+
+.memory-drawer-scroll::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 3px;
+}
+
+.memory-drawer-scroll::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+/* Memory Sheet Scrollbar Styles */
+.memory-sheet-scroll::-webkit-scrollbar {
+	width: 8px;
+}
+
+.memory-sheet-scroll::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.02);
+}
+
+.memory-sheet-scroll::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+}
+
+.memory-sheet-scroll::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+/* Memory Dialog Scrollbar Styles */
+.memory-dialog-scroll::-webkit-scrollbar {
+	width: 8px;
+}
+
+.memory-dialog-scroll::-webkit-scrollbar-track {
+	background: hsl(var(--muted) / 0.05);
+}
+
+.memory-dialog-scroll::-webkit-scrollbar-thumb {
+	background: hsl(var(--border) / 0.5);
+	border-radius: 4px;
+}
+
+.memory-dialog-scroll::-webkit-scrollbar-thumb:hover {
+	background: hsl(var(--border) / 0.7);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+		font-size: 14px;
+		letter-spacing: var(--tracking-normal);
+	}
+
+	@media (max-width: 767px) {
+		input:not([type="button"]):not([type="checkbox"]):not([type="color"]):not(
+				[type="file"]
+			):not([type="hidden"]):not([type="image"]):not([type="radio"]):not(
+				[type="range"]
+			):not([type="reset"]):not([type="submit"]),
+		textarea,
+		select,
+		[contenteditable]:not([contenteditable="false"]) {
+			font-size: 16px !important;
+		}
+	}
+}
+
+/* From the hosted app (apps/web/globals.css). */
+@theme {
+	--color-onboarding: #525966;
+
+	--color-fg-primary: #fafafa;
+	--color-fg-secondary: #e2e8f0;
+	--color-fg-muted: #d0dae7;
+	--color-fg-subtle: #b5c2d3;
+	--color-fg-faint: #a0aec4;
+
+	--color-surface-base: #0b1119;
+	--color-surface-card: #101822;
+	--color-surface-hover: #131b28;
+	--color-surface-skeleton: #1a2030;
+	--color-surface-border: #263348;
+
+	--color-pill-bg: #0d121a;
+	--color-pill-bg-active: #00173c;
+	--color-pill-border: #161f2c;
+	--color-pill-border-active: #2261ca33;
+
+	--color-brand-accent: #4ba0fa;
+
+	--animate-file-upload-grow: file-upload-grow 6s cubic-bezier(0.22, 1, 0.36, 1)
+		forwards;
+	--animate-login-marquee: login-marquee 40s linear infinite;
+}
+
+:root {
+	--color-placeholder-onboarding: #525966;
+	--sm-scrollbar-thumb: rgb(41 57 82 / 0.55);
+	--sm-scrollbar-thumb-hover: rgb(55 90 130 / 0.75);
+	--sm-scrollbar-thumb-active: rgb(70 110 160 / 0.85);
+}
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--sm-scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background-color: var(--sm-scrollbar-thumb);
+	border-radius: 100px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background-color: var(--sm-scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+	background-color: var(--sm-scrollbar-thumb-active);
+}
+
+*::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+.scrollbar-thin {
+	scrollbar-width: thin;
+	scrollbar-color: var(--sm-scrollbar-thumb) transparent;
+}
+
+.scrollbar-none {
+	scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+	display: none;
+}
+
+.pb-safe {
+	padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+	padding-top: max(0px, env(safe-area-inset-top));
+}
+
+.pl-safe {
+	padding-left: max(0px, env(safe-area-inset-left));
+}
+
+.pr-safe {
+	padding-right: max(0px, env(safe-area-inset-right));
+}
+
+.bottom-safe-5 {
+	bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+/* hide scrollbar but keep edge-fade affordance for horizontal nav */
+.scroll-fade-x {
+	-webkit-mask-image: linear-gradient(
+		to right,
+		transparent 0,
+		#000 12px,
+		#000 calc(100% - 12px),
+		transparent 100%
+	);
+	mask-image: linear-gradient(
+		to right,
+		transparent 0,
+		#000 12px,
+		#000 calc(100% - 12px),
+		transparent 100%
+	);
+}
+
+[class*="dmSans"],
+.font-dm-sans {
+	letter-spacing: -0.01em;
+	line-height: 135%;
+}
+
+.mcp-client-button-group:hover .mcp-client-gradient-text {
+	background: linear-gradient(
+		94deg,
+		#369bfd 4.8%,
+		#36fdfd 77.04%,
+		#36fdb5 143.99%
+	);
+	background-clip: text;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+/* css to fix for ordered list numbers being cut off in chat agent messages */
+.chat-markdown-content ol {
+	padding-left: 1.5rem;
+	margin-left: 0;
+}
+
+.chat-markdown-content ul {
+	padding-left: 1.5rem;
+	margin-left: 0;
+}
+
+.chat-markdown-content li {
+	margin-left: 0;
+	padding-left: 0.25rem;
+}
+
+/* Loose lists wrap item content in <p> whose top margin detaches the bullet */
+.chat-markdown-content li > p:first-child {
+	margin-top: 0;
+}
+
+.chat-markdown-content pre {
+	margin: 0.75rem 0;
+	overflow-x: auto;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 0.75rem;
+	background: #080b10 !important;
+	padding: 0.875rem 1rem;
+	color: #f4f4f5 !important;
+}
+
+.chat-markdown-content pre code {
+	display: block;
+	background: transparent !important;
+	padding: 0;
+	color: #f4f4f5 !important;
+	font-size: 0.875rem;
+	line-height: 1.65;
+	text-shadow: none;
+	white-space: pre;
+}
+
+.chat-markdown-content pre code *,
+.chat-markdown-content pre [style] {
+	background: transparent !important;
+	color: #f4f4f5 !important;
+	text-shadow: none !important;
+}
+
+.chat-markdown-content pre code .line {
+	min-height: 1.45em;
+}
+
+.chat-markdown-content :not(pre) > code {
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 0.375rem;
+	background: rgba(255, 255, 255, 0.06);
+	padding: 0.125rem 0.3125rem;
+	color: #fafafa;
+	font-size: 0.875em;
+}
+
+/* Model spams `---` between every section; headings already separate them */
+.chat-markdown-content hr {
+	display: none;
+}
+
+.shadow-inside-out {
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.3),
+		inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Disable ProseMirror focus styles */
+
+/* next/font supplied these as class names; here they are plain font stacks. */
+.font-dm-sans {
+	font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+.font-dm-mono {
+	font-family: "DM Mono", ui-monospace, monospace;
+}
+
+body {
+	background: #0b0e13;
+	color: #fafafa;
+	font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}

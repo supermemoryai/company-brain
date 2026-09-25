@@ -37,7 +37,7 @@ import {
 	type McpRuntimeTools,
 } from "../tools/mcp/runtime-tools"
 import { listConnectionsForActor } from "../tools/mcp/store"
-import { sandboxToolsConfigured } from "../tools/sandbox/daytona-client"
+import { sandboxToolsConfigured } from "../tools/sandbox/client"
 import { createSandboxTools } from "../tools/sandbox/tools"
 import { createSchedulerTools } from "../tools/scheduler"
 import { createSendToTools } from "../tools/send-to"

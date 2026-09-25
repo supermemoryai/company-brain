@@ -1,4 +1,5 @@
 import type { CreateSandbox, Sandbox } from "@daytona/api-client"
+import { boundedArtifactStream, type SandboxClient } from "./client"
 import type {
 	ExecuteRequest,
 	ExecuteResponse,
@@ -16,54 +17,6 @@ import {
 	validateRepoUrl,
 } from "./guards"
 
-export type DaytonaFileInfo = FileInfo
-
-export type DaytonaSandboxClient = {
-	createSandbox(args: { goal: string; repoUrl?: string }): Promise<{
-		sandboxId: string
-		defaultCwd: string
-		repoUrl?: string
-		cloneOutput?: string
-	}>
-	runCommand(args: {
-		sandboxId: string
-		command: string
-		cwd: string
-		timeoutSec?: number
-	}): Promise<{
-		exitCode: number
-		output: string
-		truncated: boolean
-		cwd: string
-		timeoutSec: number
-	}>
-	listFiles(args: { sandboxId: string; path: string; glob?: string }): Promise<{
-		files: Array<DaytonaFileInfo | string>
-		path: string
-		glob?: string
-	}>
-	readTextFile(args: {
-		sandboxId: string
-		path: string
-	}): Promise<{ path: string; content: string; truncated: boolean }>
-	getArtifact(args: { sandboxId: string; path: string }): Promise<{
-		path: string
-		sizeBytes: number
-		content: ArrayBuffer
-		truncated: false
-	}>
-	getArtifactStream(args: {
-		sandboxId: string
-		path: string
-		signal?: AbortSignal
-	}): Promise<{
-		path: string
-		sizeBytes: number
-		content: ReadableStream<Uint8Array>
-	}>
-	isSandboxRunning(sandboxId: string): Promise<boolean>
-}
-
 type DaytonaConfig = {
 	apiKey: string
 	apiUrl: string
@@ -80,10 +33,6 @@ function daytonaConfig(env: Env): DaytonaConfig | null {
 		apiKey: env.DAYTONA_API_KEY,
 		apiUrl: "https://app.daytona.io/api",
 	}
-}
-
-export function sandboxToolsConfigured(env: Env): boolean {
-	return Boolean(daytonaConfig(env))
 }
 
 function daytonaUrl(config: DaytonaConfig, path: string): string {
@@ -231,49 +180,7 @@ function encodeQuery(params: Record<string, string | undefined>): string {
 	return text ? `?${text}` : ""
 }
 
-export function base64FromArrayBuffer(buffer: ArrayBuffer): string {
-	let binary = ""
-	const bytes = new Uint8Array(buffer)
-	for (let index = 0; index < bytes.byteLength; index++) {
-		binary += String.fromCharCode(bytes[index] ?? 0)
-	}
-	return btoa(binary)
-}
-
-function boundedArtifactStream(
-	content: ReadableStream<Uint8Array>,
-	expectedSize: number,
-): ReadableStream<Uint8Array> {
-	let received = 0
-	return content.pipeThrough(
-		new TransformStream<Uint8Array, Uint8Array>({
-			transform(chunk, controller) {
-				received += chunk.byteLength
-				if (
-					received > expectedSize ||
-					received > sandboxLimits.maxArtifactBytes
-				) {
-					controller.error(
-						new Error("Artifact contents exceeded the sandbox artifact limit."),
-					)
-					return
-				}
-				controller.enqueue(chunk)
-			},
-			flush(controller) {
-				if (received !== expectedSize) {
-					controller.error(
-						new Error(
-							"Artifact contents did not match the reported file size.",
-						),
-					)
-				}
-			},
-		}),
-	)
-}
-
-export function createDaytonaSandboxClient(env: Env): DaytonaSandboxClient {
+export function createDaytonaSandboxClient(env: Env): SandboxClient {
 	const config = daytonaConfig(env)
 	if (!config) throw new Error("Daytona is not configured.")
 
@@ -386,7 +293,7 @@ export function createDaytonaSandboxClient(env: Env): DaytonaSandboxClient {
 					glob: args.glob.trim(),
 				}
 			}
-			const files = await toolboxRequest<DaytonaFileInfo[]>(
+			const files = await toolboxRequest<FileInfo[]>(
 				config,
 				sandbox,
 				`/files${encodeQuery({ path })}`,
@@ -434,7 +341,7 @@ export function createDaytonaSandboxClient(env: Env): DaytonaSandboxClient {
 		async getArtifactStream(args) {
 			const sandbox = await getSandbox(config, args.sandboxId, args.signal)
 			const path = normalizePath(args.path, "workspace")
-			const info = await toolboxRequest<DaytonaFileInfo>(
+			const info = await toolboxRequest<FileInfo>(
 				config,
 				sandbox,
 				`/files/info${encodeQuery({ path })}`,

@@ -45,3 +45,13 @@ interface Env {
 	/** Optional Context.dev key for the web-extract tool. */
 	CONTEXT_DEV_API_KEY?: string
 }
+
+interface Env {
+	/** The built app UI (web/), served for every path the worker doesn't own. */
+	ASSETS: Fetcher
+}
+
+interface Env {
+	/** Cloudflare Sandbox containers for the sandbox tools (git, shell, files). */
+	Sandbox?: DurableObjectNamespace<import("@cloudflare/sandbox").Sandbox>
+}

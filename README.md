@@ -1,39 +1,108 @@
 # Company Brain
 
-An agent that lives in your Slack, remembers what your team says, and answers
-from that memory. It reads the channels it is in, keeps a shared brain plus a
-private one per person, connects to your other tools over MCP, and does
-research on its own when it decides something is worth looking into.
+**A teammate in your Slack that remembers everything your team says, and can go do the work.**
 
-This ran as a paid product at supermemory until September 2026. This repository
-is that agent, rebuilt to stand on its own: memory goes to the public
-supermemory API, state goes to D1, and it deploys to your own Cloudflare
-account.
+Company Brain is an AI agent with shared memory for your whole company. Ask it
+what was decided, who owns what, or why something is the way it is, and it
+answers from what your team actually said. Ask it to open the issue, check the
+PR or dig into the repo, and it does that too. It even speaks up on its own when
+it has something worth adding.
 
-## Deploy
+It ran as a paid product at [supermemory](https://supermemory.ai). Now it's open
+source, and it deploys to your own Cloudflare account in a few minutes.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/supermemoryai/company-brain)
 
-The deploy asks for two secrets:
+> **#product**
+>
+> **You:** @brain what did we decide about pricing for the enterprise plan?
+>
+> **Company Brain:** You and Mahesh landed on usage-based only, no seat fees,
+> in yesterday's #product huddle. Sam still owes the updated pricing page.
 
-- `SUPERMEMORY_API_KEY` — where the brain reads and writes memory. Get one at
+> **#eng**
+>
+> **Alex:** is prod down? a couple of customers are pinging me
+>
+> **Company Brain:** Not fully down. `api/search` is elevated, 42 errors in the
+> last 15 minutes, and Kush is already on it. Probably this morning's deploy.
+
+Nobody mentioned the bot in that second thread. It spoke up because it knew the
+answer.
+
+## What it does
+
+- **Remembers.** Decisions, projects, owners and context from the channels it's
+  in, kept current as people talk. No one has to write anything down.
+- **Answers with receipts.** Every answer comes from your team's own
+  conversations and connected tools, and it tells you where it found it.
+- **Acts in your tools.** Connect GitHub, Linear, Notion, Google Workspace and
+  hundreds of other MCP servers. It opens issues, reads PRs, searches docs, and
+  does the actual task instead of describing it.
+- **Speaks up on its own.** It chimes in when a conversation needs something it
+  knows. You decide how chatty it is, org-wide and per channel.
+- **Runs code.** It gets its own sandbox: it clones a repo, runs commands and
+  scripts, and hands back files like charts, CSVs and PDFs right in Slack.
+- **Works while you sleep.** Scheduled automations post digests and summaries
+  to a channel or your DMs, and it researches topics on its own when it decides
+  something is worth looking into.
+- **Learns your team's way of doing things.** Skills teach it your repeatable
+  processes, formats and voice. A workspace prompt sets how it behaves
+  everywhere.
+
+## Private by design
+
+Memory isn't one big bucket. It's a permissions graph:
+
+- **Public channels** feed a shared brain the whole org can draw on.
+- **Private channels** get their own memory, visible only to people in them.
+- **Your DMs** build a personal memory that only you can reach.
+
+The bot only ever reads with the asker's own access, so it can't leak something
+you couldn't see yourself. Tool access works the same way: writes always run
+under your own connection, and when a request needs a tool only a teammate has
+connected, it asks them first with an approve or deny card. Nothing is granted
+silently.
+
+## Yours to run
+
+- **Your infrastructure.** It runs on your Cloudflare account. Your memory lives
+  in your own supermemory account.
+- **Your model.** Bring an Anthropic, OpenAI, Google or xAI key and pay the
+  provider directly. No markup.
+- **Your app.** A web app at `/` shows the brain's home, a live graph of what it
+  remembers, and settings for tools, models, proactivity, automations and
+  skills. Everyone signs in with Slack. Only owners and admins can change
+  org-wide settings.
+
+## Deploy
+
+Click **Deploy to Cloudflare** above. It asks for two secrets:
+
+- `SUPERMEMORY_API_KEY`: where the brain reads and writes memory. Get one at
   [console.supermemory.ai](https://console.supermemory.ai).
 - One model key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
   `GOOGLE_GENERATIVE_AI_API_KEY` or `XAI_API_KEY`. The prompts were tuned
-  against Anthropic and xAI models; any of the four works.
+  against Anthropic and xAI models, and any of the four works.
 
-Everything else — D1, KV, the Durable Object, Workers AI — is provisioned for
-you.
+Everything else is provisioned for you: D1, KV, the Durable Objects, Workers AI,
+and the sandbox container the brain runs code in. Containers need the Workers
+Paid plan.
 
-When the deploy finishes, open `/setup` on your new worker. It checks what is
-configured, hands you a Slack app manifest with your URLs already in it, and
-takes the three Slack values back. Then install to your workspace.
+Then:
 
-After the first deploy, apply the database migrations once:
+1. Apply the database migrations once: `bun run db:migrate`.
+2. Open `/setup` on your new worker. It checks what's configured, hands you a
+   Slack app manifest with your URLs already filled in, and takes the three
+   Slack values back.
+3. **Sign in with Slack.** The first person to sign in owns the deployment.
+4. **Install to Slack**, and say hi to the bot.
 
-```sh
-bun run db:migrate
-```
+## Learn more
+
+The [user guide](docs/guide/README.md) covers the permissions graph,
+proactivity, automations, connectors and a set of real use cases. The
+[architecture notes](docs/README.md) go deeper on how the agent works.
 
 ## Local development
 
@@ -44,20 +113,29 @@ bun run db:migrate:local
 bun run dev
 ```
 
-Slack has to reach your machine, so point a tunnel at the dev server and use
-that hostname when you create the Slack app.
+Docker has to be running, since the sandbox is a container. Slack has to reach
+your machine, so point a tunnel at the dev server, set `PUBLIC_URL` in
+`.dev.vars` to the tunnel's URL, and create the Slack app from the tunnel's
+`/setup` page.
 
 ## How it works
 
-- **`src/brain/turn`** — one turn of the agent: context assembly, tool loop,
+- **`src/brain/turn`**: one turn of the agent. Context assembly, the tool loop,
   finalization, and the durable state that lets a turn resume.
-- **`src/brain/slack`** — everything Slack: events, threads, reactions,
-  channel policy, and when to speak unprompted.
-- **`src/brain/memory`** — what gets remembered, under which container tag, and
-  how it is recalled.
-- **`src/brain/tools/mcp`** — connecting to MCP servers, brokering their OAuth,
+- **`src/brain/slack`**: everything Slack. Events, threads, reactions, channel
+  policy, and when to speak unprompted.
+- **`src/brain/memory`**: what gets remembered, under which container tag, and
+  how it's recalled.
+- **`src/brain/tools/mcp`**: connecting to MCP servers, brokering their OAuth,
   and deciding which of their tools the agent may call.
-- **`src/compat`** — the seam where this repository meets what used to be
+- **`src/brain/tools/sandbox`**: the shell, git and file tools, on a Cloudflare
+  Sandbox container (`sandbox/Dockerfile`). Set `DAYTONA_API_KEY` to run them on
+  Daytona instead.
+- **`src/auth`**: Sign in with Slack, and the session cookie that puts the
+  signed-in person and their role on each request.
+- **`web`**: the app UI, a React app bundled by `bun web/build.ts` into
+  `dist/web` and served as static assets. It calls the API under `/brain`.
+- **`src/compat`**: the seam where this repository meets what used to be
   supermemory's private backend. Memory calls go to the public API from here.
 
 The agent itself is a Durable Object, one per organization, so a conversation
@@ -65,12 +143,12 @@ has somewhere to live between messages.
 
 ## What changed in the open
 
-Three things the hosted version could do are not available through the public
-API, and the brain does something slightly different instead:
+Three things the hosted version could do aren't available through the public
+API, so the brain does something slightly different instead:
 
 - **Listing memories.** The API exposes memories through search, so reads that
   were "every memory in this container, newest first" are now "every memory in
-  this container about X", ranked by relevance. Each read says what it is
+  this container about X", ranked by relevance. Each read says what it's
   looking for.
 - **Space configuration.** Names, visibility and profile buckets have no public
   equivalent. Entity context does, per document, so the brain records what a
@@ -84,7 +162,7 @@ sequentially now.
 
 ## Status
 
-Extracted and rebuilt in the open: it type-checks, builds, and boots, but it
-has not yet been run against a live Slack workspace end to end. See `docs/` for
-the original architecture notes. Issues and pull requests welcome; this is not
-a supported product.
+Early. It's been extracted from the hosted product and rebuilt in the open, and
+it installs and receives events in a live Slack workspace, but it hasn't been
+battle-tested outside supermemory yet. Issues and pull requests are welcome.
+This isn't a supported product.

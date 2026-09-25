@@ -30,7 +30,7 @@ import { getWorkspaceStatusByOrgId } from "./slack/workspace"
 import { type Automation, listAutomations } from "./tools/automations"
 import { MCP_CATALOG } from "./tools/mcp/catalog"
 import { listConnectionsForActor } from "./tools/mcp/store"
-import { sandboxToolsConfigured } from "./tools/sandbox/daytona-client"
+import { sandboxToolsConfigured } from "./tools/sandbox/client"
 import {
 	isManageableReminderSchedule,
 	type ScheduledTaskPayload,

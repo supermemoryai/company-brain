@@ -19,9 +19,15 @@ export function slackAppManifest(origin: string, appName: string) {
 			},
 		},
 		oauth_config: {
-			redirect_urls: [`${origin}/slack/oauth/callback`],
+			redirect_urls: [
+				`${origin}/brain/slack/oauth/callback`,
+				`${origin}/auth/slack/callback`,
+			],
 			scopes: {
 				user: [
+					"openid",
+					"email",
+					"profile",
 					"canvases:read",
 					"channels:history",
 					"files:read",

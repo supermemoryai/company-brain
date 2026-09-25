@@ -9,10 +9,41 @@
 		"enable_ctx_exports"
 	],
 	"minify": true,
-	"observability": { "enabled": true },
-	"ai": { "binding": "AI" },
-	"version_metadata": { "binding": "CF_VERSION_METADATA" },
-	"worker_loaders": [{ "binding": "LOADER" }],
+	"build": {
+		"command": "bun run build:web",
+		"watch_dir": ["src", "web"]
+	},
+	"assets": {
+		"directory": "./dist/web",
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/brain/*",
+			"/slack/*",
+			"/auth/*",
+			"/setup",
+			"/setup/*",
+			"/health"
+		]
+	},
+	"vars": {
+		// The sandbox SDK's RPC transport; artifact downloads stream over it.
+		"SANDBOX_TRANSPORT": "rpc"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"ai": {
+		"binding": "AI"
+	},
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
+	"worker_loaders": [
+		{
+			"binding": "LOADER"
+		}
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -21,14 +52,47 @@
 			"migrations_dir": "drizzle"
 		}
 	],
-	"kv_namespaces": [{ "binding": "BRAIN_KV", "id": "company_brain_kv" }],
+	"kv_namespaces": [
+		{
+			"binding": "BRAIN_KV",
+			"id": "company_brain_kv"
+		}
+	],
 	"durable_objects": {
 		"bindings": [
-			{ "name": "COMPANY_BRAIN_AGENT", "class_name": "CompanyBrainAgent" }
+			{
+				"name": "COMPANY_BRAIN_AGENT",
+				"class_name": "CompanyBrainAgent"
+			},
+			{
+				"name": "Sandbox",
+				"class_name": "Sandbox"
+			}
 		]
 	},
 	"migrations": [
-		{ "tag": "v1", "new_sqlite_classes": ["CompanyBrainAgent"] }
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"CompanyBrainAgent"
+			]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": [
+				"Sandbox"
+			]
+		}
+	],
+	// Sandbox tools (shell, git, files) run here. Containers need the Workers
+	// Paid plan.
+	"containers": [
+		{
+			"class_name": "Sandbox",
+			"image": "./sandbox/Dockerfile",
+			"instance_type": "basic",
+			"max_instances": 10
+		}
 	],
 	"unsafe": {
 		"bindings": [
@@ -36,13 +100,19 @@
 				"type": "ratelimit",
 				"name": "GMAIL_FETCH_RATE_LIMITER",
 				"namespace_id": "1101",
-				"simple": { "limit": 150, "period": 10 }
+				"simple": {
+					"limit": 150,
+					"period": 10
+				}
 			},
 			{
 				"type": "ratelimit",
 				"name": "GRANOLA_FETCH_RATE_LIMITER",
 				"namespace_id": "1102",
-				"simple": { "limit": 25, "period": 10 }
+				"simple": {
+					"limit": 25,
+					"period": 10
+				}
 			}
 		]
 	}

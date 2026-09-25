@@ -1,8 +1,10 @@
 type PageParams = {
 	origin: string
+	databaseReady: boolean
 	hasMemoryKey: boolean
 	providers: string[]
 	slackConfigured: boolean
+	signedIn: boolean
 	manifest: object
 }
 
@@ -27,6 +29,7 @@ function check(done: boolean, label: string, detail: string): string {
 export function setupPage(params: PageParams): string {
 	const manifestUrl = `https://api.slack.com/apps?new_app=1&manifest_json=${encodeURIComponent(JSON.stringify(params.manifest))}`
 	const ready =
+		params.databaseReady &&
 		params.hasMemoryKey && params.providers.length > 0 && params.slackConfigured
 	return `<!doctype html>
 <html lang="en">
@@ -61,13 +64,16 @@ export function setupPage(params: PageParams): string {
 	<h1>Company Brain</h1>
 	<p class="sub">${escapeHtml(params.origin)}</p>
 	<ul>
+		${check(params.databaseReady, "Database", params.databaseReady ? "Migrations applied." : "The D1 tables don't exist yet. Run <code>bun run db:migrate</code>, then reload.")}
 		${check(params.hasMemoryKey, "Memory", params.hasMemoryKey ? "Connected to supermemory." : "Set <code>SUPERMEMORY_API_KEY</code> as a Worker secret and redeploy.")}
 		${check(params.providers.length > 0, "Model", params.providers.length > 0 ? `Using ${escapeHtml(params.providers.join(", "))}.` : "Set one of <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GOOGLE_GENERATIVE_AI_API_KEY</code> or <code>XAI_API_KEY</code>.")}
 		${check(params.slackConfigured, "Slack", params.slackConfigured ? "Credentials stored. Install the app to your workspace." : "Create the Slack app below, then paste its credentials.")}
 	</ul>
 	${
 		params.slackConfigured
-			? `<div class="ready"><strong>${ready ? "Ready." : "Slack is configured."}</strong><p>Install to your workspace and say hello to the bot.</p><a class="btn" href="/slack/install">Install to Slack</a></div>`
+			? params.signedIn
+				? `<div class="ready"><strong>${ready ? "Ready." : "Slack is configured."}</strong><p>Install to your workspace and say hello to the bot.</p><a class="btn" href="/brain/slack/oauth/install">Install to Slack</a> <a class="btn" href="/">Open the app</a></div>`
+				: `<div class="ready"><strong>Slack is configured.</strong><p>Sign in with your Slack account. The first person to sign in owns this deployment; then install the bot to your workspace.</p><a class="btn" href="/auth/slack/login">Sign in with Slack</a></div>`
 			: `<p>Create a Slack app with this deployment's URLs already filled in, then copy its credentials back here.</p>
 	<a class="btn" href="${escapeHtml(manifestUrl)}" target="_blank" rel="noreferrer">Create the Slack app</a>
 	<form method="post" action="/setup/slack">

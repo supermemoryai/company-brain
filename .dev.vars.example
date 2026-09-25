@@ -10,5 +10,6 @@ OPENAI_API_KEY=""
 GOOGLE_GENERATIVE_AI_API_KEY=""
 
 # ── Optional ──────────────────────────────────────────────────────────────────
-# Sandbox tools (code execution). Tools stay hidden when this is unset.
+# Sandbox tools (shell, git, files) run on Cloudflare Sandbox containers by
+# default; local dev needs Docker running. Set this to use Daytona instead.
 DAYTONA_API_KEY=""

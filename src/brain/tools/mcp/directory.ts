@@ -132,10 +132,10 @@ export function mcpAppSubtitle(slug: string): string | undefined {
 
 // Opens the prefilled setup dialog. Param is namespaced: apps/web strips a bare `org`.
 export function mcpSetupUrl(
-	env: { CONSUMER_APP_URL?: string },
+	env: { CONSUMER_APP_URL?: string; PUBLIC_URL?: string },
 	slug: string,
 ): string {
-	const base = (env.CONSUMER_APP_URL ?? "https://app.supermemory.ai").replace(
+	const base = (env.CONSUMER_APP_URL || env.PUBLIC_URL || "").replace(
 		/\/$/,
 		"",
 	)

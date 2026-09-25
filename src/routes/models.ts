@@ -19,7 +19,9 @@ import {
 	resolveBrainTriageModel,
 	TRIAGE_MODEL,
 } from "@/lib/brain/turn/model-profile"
+import { availableProviders } from "@/lib/brain/turn/brain-model"
 import { isRecord } from "@/lib/brain/turn/util"
+import { getModelInfo, type SupportedModel } from "@/lib/model-registry"
 import { roleGate } from "@/lib/auth/role-gate"
 import type { AppContext } from "@/types"
 
@@ -46,6 +48,16 @@ function resolvedFor(metadata: unknown) {
 	}
 }
 
+// Offer only models whose provider this deployment has a key for; picking any
+// other would silently fall back to a different provider at run time.
+function usableModels<T extends SupportedModel>(
+	env: Env,
+	models: readonly T[],
+): T[] {
+	const providers = new Set(availableProviders(env))
+	return models.filter((model) => providers.has(getModelInfo(model).provider))
+}
+
 // Per-org Company Brain model config, stored on organization.metadata.brainModels.
 export const brainModelsRoutes = new Hono<AppContext>()
 	.get("/", async (c) => {
@@ -65,9 +77,9 @@ export const brainModelsRoutes = new Hono<AppContext>()
 				triageEffort: BRAIN_TRIAGE_EFFORT,
 			},
 			choices: {
-				main: BRAIN_MAIN_MODEL_CHOICES,
+				main: usableModels(c.env, BRAIN_MAIN_MODEL_CHOICES),
 				mainEffort: BRAIN_MAIN_EFFORT_CHOICES,
-				triage: BRAIN_TRIAGE_MODEL_CHOICES,
+				triage: usableModels(c.env, BRAIN_TRIAGE_MODEL_CHOICES),
 				triageEffort: BRAIN_EFFORT_CHOICES,
 			},
 		})

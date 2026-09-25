@@ -30,7 +30,7 @@ export function configureFromEnv(env: Env): void {
 	currentEnv = env
 	const publicUrl = env.PUBLIC_URL?.replace(/\/$/, "")
 	current = {
-		features: { email: false, sandbox: Boolean(env.DAYTONA_API_KEY) },
+		features: { email: false, sandbox: Boolean(env.DAYTONA_API_KEY || env.Sandbox) },
 		trustedOrigins: publicUrl ? [publicUrl] : [],
 		publicUrl,
 	}

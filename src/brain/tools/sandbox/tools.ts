@@ -5,9 +5,9 @@ import type { CompanyBrainAgent } from "../../turn/agent"
 import type { TurnDeps } from "../../turn/deps"
 import {
 	base64FromArrayBuffer,
-	createDaytonaSandboxClient,
+	createSandboxClient,
 	sandboxToolsConfigured,
-} from "./daytona-client"
+} from "./client"
 import {
 	normalizeCwd,
 	normalizePath,
@@ -70,7 +70,7 @@ export function createSandboxTools(args: CreateSandboxToolsArgs): ToolSet {
 
 	const { env, agent, deps, scope, traceId } = args
 	const sessionKey = sandboxSessionKey(scope)
-	const client = createDaytonaSandboxClient(env)
+	const client = createSandboxClient(env)
 	// Models sometimes inspect the same artifact twice while drafting their
 	// answer. Reusing a successful upload keeps that from creating duplicates.
 	const artifactUploads = new Map<
@@ -127,9 +127,9 @@ export function createSandboxTools(args: CreateSandboxToolsArgs): ToolSet {
 					}
 				}
 				if (existing) {
-					// Drop the session when the repo scope changed, or when Daytona
-					// already auto-stopped/deleted the workspace (autoStop 30m,
-					// autoDeleteInterval:0), so a cached id can't be reused wrongly.
+					// Drop the session when the repo scope changed, or when the
+					// sandbox already slept or stopped and lost its workspace, so a
+					// cached id can't be reused wrongly.
 					deleteSandboxSession(agent, sessionKey)
 					const reason = scopeMatches ? "stale" : "repo-changed"
 					console.log(
