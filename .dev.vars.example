@@ -11,5 +11,6 @@ GOOGLE_GENERATIVE_AI_API_KEY=""
 
 # ── Optional ──────────────────────────────────────────────────────────────────
 # Sandbox tools (shell, git, files) run on Cloudflare Sandbox containers by
-# default; local dev needs Docker running. Set this to use Daytona instead.
-DAYTONA_API_KEY=""
+# default; local dev needs Docker running. To use Daytona instead, uncomment
+# this and set it (or add it later with `wrangler secret put DAYTONA_API_KEY`).
+# DAYTONA_API_KEY=""
