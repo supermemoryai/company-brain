@@ -34,8 +34,8 @@ answer.
 
 - **Remembers.** Decisions, projects, owners and context from the channels it's
   in, kept current as people talk. No one has to write anything down.
-- **Answers with receipts.** Every answer comes from your team's own
-  conversations and connected tools, and it tells you where it found it.
+- **Answers from what your team actually said.** Not from the internet and not
+  from guesswork: from your own conversations and connected tools.
 - **Acts in your tools.** Connect GitHub, Linear, Notion, Google Workspace and
   hundreds of other MCP servers. It opens issues, reads PRs, searches docs, and
   does the actual task instead of describing it.

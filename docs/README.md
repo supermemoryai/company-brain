@@ -8,6 +8,10 @@ Company Brain is Supermemory’s **org-scoped agent**: a Cloudflare Worker recei
 
 **Mount:** `/brain/*` from `apps/api/src/cloud-extras.ts` → `apps/api/src/routes/brain/index.ts`
 
+## User guide
+
+For how Company Brain behaves day to day (memory and permissions, connectors, automations, proactivity, and walkthroughs), see the [user guide](./guide/README.md).
+
 ## Docs in this folder
 
 | Doc | What it’s for |
