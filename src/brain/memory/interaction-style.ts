@@ -27,9 +27,8 @@ export async function loadInteractionStyleProfile(
 ): Promise<InteractionStyleProfile | null> {
 	const rows = await listBrainMemories(env, {
 		containerTags: [AGENT_SELF_CONTAINER_TAG],
-		query:
-			"how this team wants to be spoken to: tone, voice, social norms, culture, things not to do, how the team operates",
 		limit: 80,
+		withBuckets: true,
 	})
 
 	const personKey = askerSlackUserId?.trim()

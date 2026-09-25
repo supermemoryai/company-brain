@@ -1,6 +1,9 @@
 import type { ProfileBucketDef } from "@repo/db/schema/common"
 import { captureException } from "@/lib/capture"
-import { setContainerEntityContext } from "../../memory/entity-context"
+import {
+	getContainerTagSettings,
+	updateContainerTagSettings,
+} from "../../memory/container-tags"
 import {
 	AGENT_SELF_CONTAINER_TAG,
 	privateContainerTagFor,
@@ -19,9 +22,7 @@ import {
 import {
 	isGeneratedBrainSpaceName,
 	isSlackManagedBrainSpaceName,
-	SLACK_MANAGED_SPACE_NAME_METADATA_KEY,
 	slackChannelSpaceName,
-	slackManagedBrainSpaceName,
 } from "./space-name"
 
 /** Re-sync a tag's brain config at most once per this window. */
@@ -61,15 +62,15 @@ function markSynced(agent: CompanyBrainAgent, scopeKey: string): void {
 }
 
 /**
- * Record what a container is about so every write into it carries that context.
+ * Keep a container's entity context and profile buckets current, and name it
+ * unless someone already renamed it. supermemory reads the context and buckets
+ * whenever it extracts memories from a document in this container.
  *
- * The hosted product owned the space row and could also set its display name,
- * visibility and profile buckets. The public API exposes none of those, but it
- * does take the entity context per document, which is the part that actually
- * shapes what gets remembered.
+ * Visibility was a hosted-product setting on the space row; the public API has
+ * no equivalent, so `visibility` is accepted and ignored.
  */
 async function upsertBrainSpaceConfig(
-	_env: Env,
+	env: Env,
 	params: {
 		orgId: string
 		ownerId: string | null
@@ -81,7 +82,24 @@ async function upsertBrainSpaceConfig(
 		trackSlackManagedName?: boolean
 	},
 ): Promise<void> {
-	setContainerEntityContext(params.containerTag, params.entityContext)
+	const existing = await getContainerTagSettings(env, params.containerTag)
+	const keepName =
+		existing?.name &&
+		!isGeneratedBrainSpaceName(existing.name, params.containerTag) &&
+		!(
+			params.trackSlackManagedName &&
+			isSlackManagedBrainSpaceName({
+				name: existing.name,
+				containerTag: params.containerTag,
+				desiredName: params.name,
+				metadata: undefined,
+			})
+		)
+	await updateContainerTagSettings(env, params.containerTag, {
+		...(keepName ? {} : { name: params.name }),
+		entityContext: params.entityContext,
+		profileBuckets: params.profileBuckets,
+	})
 }
 
 export type BrainProfileSyncContext = {
@@ -107,7 +125,7 @@ export async function maybeSyncBrainProfileConfig(
 
 	// Shared Team Brain: enriched entity context + the standard memory buckets.
 	// Buckets classify a memory's kind (preference/pattern/task); people/topic
-	// routing is orthogonal and lives in memory_entry.metadata.sm_brain_tags.
+	// routing is orthogonal and lives in memory metadata (brain_tags).
 	if (needsSync(agent, "shared")) {
 		try {
 			await upsertBrainSpaceConfig(env, {
@@ -185,8 +203,6 @@ export async function maybeSyncBrainProfileConfig(
 			ctx.privateChannel.channelId,
 			ctx.privateChannel.channelName,
 		)
-		// Space display names were a hosted-product concern; there is nothing to
-		// repair here, so a channel only does the profile refresh.
 		const profileSyncNeeded = needsSync(agent, scopeKey)
 
 		if (profileSyncNeeded) {

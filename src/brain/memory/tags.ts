@@ -389,10 +389,8 @@ export async function fetchTaggedBrainMemories(
 	if (!keys.length) return []
 	const containerTags = [...new Set(params.containerTags.filter(Boolean))]
 	if (!containerTags.length) return []
-	// The tag keys are the subject of the read, so they double as the query.
 	const rows = await listBrainMemories(env, {
 		containerTags,
-		query: keys.map((key) => key.replace(/^[a-z]+_/, "")).join(", "),
 		tagKeys: keys,
 		limit: params.limit,
 	})

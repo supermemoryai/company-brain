@@ -5,7 +5,6 @@ import {
 	QuotaExceededError,
 	SpaceCreationError,
 } from "@/services/errors"
-import { getContainerEntityContext } from "../../../memory/entity-context"
 import { VectorDBService } from "../../services/vectordb"
 import type { BatchItemResult } from "./helpers"
 
@@ -75,8 +74,6 @@ export function addMemorySingle(
 			)
 		}
 
-		const entityContext = getContainerEntityContext(containerTags?.[0])
-
 		return yield* Effect.tryPromise({
 			try: async (): Promise<BatchItemResult> => {
 				const result = await client.documents.add({
@@ -85,7 +82,6 @@ export function addMemorySingle(
 						? { customId: requestParams.customId }
 						: {}),
 					...(containerTags ? { containerTags } : {}),
-					...(entityContext ? { entityContext } : {}),
 					...(requestParams.taskType
 						? { taskType: requestParams.taskType }
 						: {}),

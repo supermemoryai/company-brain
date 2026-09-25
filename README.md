@@ -143,18 +143,19 @@ has somewhere to live between messages.
 
 ## What changed in the open
 
-Three things the hosted version could do aren't available through the public
-API, so the brain does something slightly different instead:
+The hosted brain read supermemory's Postgres directly. Here every read and write
+goes through the public API instead:
 
-- **Listing memories.** The API exposes memories through search, so reads that
-  were "every memory in this container, newest first" are now "every memory in
-  this container about X", ranked by relevance. Each read says what it's
-  looking for.
-- **Space configuration.** Names, visibility and profile buckets have no public
-  equivalent. Entity context does, per document, so the brain records what a
-  container is about and attaches it to every write into that container.
-- **Node contents.** A memory node hydrates from the documents the brain wrote
-  under it, rather than from the memories supermemory derived from them.
+- **Memories** are listed newest first with `/v4/memories/list`, narrowed to a
+  brain tag with a metadata filter. Their profile buckets, and the memories
+  behind a node in the memory tree, come from the documents they were derived
+  from.
+- **Container settings** (display name, entity context, profile buckets) live
+  on the container tag through `/v3/container-tags`, where supermemory reads
+  them whenever it extracts memories.
+- **Metadata keys** starting with `sm_` are reserved by supermemory and dropped
+  from writes, so the brain's own keys (`brain_tags`, `brain_tag_labels`,
+  `brain_reset_epoch`) go without the prefix.
 
 Also worth knowing: D1 has no interactive transactions or row locks. The writes
 that relied on them are idempotent upserts or use a claim token, and they run
