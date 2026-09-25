@@ -1,6 +1,8 @@
 /** Secrets, declared here because wrangler only generates types for bindings. */
 interface Env {
 	SUPERMEMORY_API_KEY: string
+	/** Any one provider's key; its prefix decides which provider it is. */
+	MODEL_API_KEY?: string
 	ANTHROPIC_API_KEY?: string
 	OPENAI_API_KEY?: string
 	GOOGLE_GENERATIVE_AI_API_KEY?: string

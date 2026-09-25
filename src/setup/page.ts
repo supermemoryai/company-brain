@@ -79,7 +79,7 @@ export function setupPage(params: PageParams): string {
 	<ul>
 		${check(params.databaseReady, "Database", databaseDetail(params))}
 		${check(params.hasMemoryKey, "Memory", params.hasMemoryKey ? "Connected to supermemory." : "Set <code>SUPERMEMORY_API_KEY</code> as a Worker secret and redeploy.")}
-		${check(params.providers.length > 0, "Model", params.providers.length > 0 ? `Using ${escapeHtml(params.providers.join(", "))}.` : "Set one of <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GOOGLE_GENERATIVE_AI_API_KEY</code> or <code>XAI_API_KEY</code>.")}
+		${check(params.providers.length > 0, "Model", params.providers.length > 0 ? `Using ${escapeHtml(params.providers.join(", "))}.` : "Set <code>MODEL_API_KEY</code> to an Anthropic, OpenAI, Google or xAI key.")}
 		${check(params.slackConfigured, "Slack", params.slackConfigured ? "Credentials stored. Install the app to your workspace." : "Create the Slack app below, then paste its credentials.")}
 	</ul>
 	${
