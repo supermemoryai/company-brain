@@ -4,6 +4,7 @@ import { sessionMiddleware } from "./auth/session"
 import { brainRoutes } from "./routes"
 import { slackRoutes } from "./routes/slack"
 import { configureFromEnv } from "./config"
+import { ensureMigrated } from "./db/migrate"
 import { setupRoutes } from "./setup/routes"
 import { hydrateSecrets, rememberPublicUrl } from "./setup/secrets"
 import type { AppContext } from "./types"
@@ -30,6 +31,7 @@ app.use("*", async (c, next) => {
 	await hydrateSecrets(c.env)
 	await rememberPublicUrl(c.env, publicOrigin(c.req.raw))
 	configureFromEnv(c.env)
+	await ensureMigrated(c.env)
 	c.set("trackedEvents", new Set<string>())
 	await next()
 })

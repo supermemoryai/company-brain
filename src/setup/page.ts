@@ -1,6 +1,8 @@
 type PageParams = {
 	origin: string
 	databaseReady: boolean
+	pendingMigrations: string[]
+	migrationError: string | null
 	hasMemoryKey: boolean
 	providers: string[]
 	slackConfigured: boolean
@@ -24,6 +26,15 @@ function escapeHtml(value: string): string {
 
 function check(done: boolean, label: string, detail: string): string {
 	return `<li class="${done ? "done" : "todo"}"><span class="mark">${done ? "✓" : "○"}</span><div><strong>${label}</strong><p>${detail}</p></div></li>`
+}
+
+function databaseDetail(params: PageParams): string {
+	if (params.databaseReady) return "Up to date."
+	const pending = params.pendingMigrations.length
+	const summary = params.migrationError
+		? `Migrating failed: <code>${escapeHtml(params.migrationError)}</code>`
+		: `${pending} migration${pending === 1 ? "" : "s"} waiting to run.`
+	return `${summary}</p><form method="post" action="/setup/migrate" class="inline"><button type="submit">Run migrations</button></form><p>`
 }
 
 export function setupPage(params: PageParams): string {
@@ -56,6 +67,8 @@ export function setupPage(params: PageParams): string {
 	button, .btn { display:inline-block; margin-top:1.2rem; padding:.6rem 1rem; border:0; border-radius:.4rem; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; text-decoration:none; }
 	@media (prefers-color-scheme: dark) { button, .btn { color:#111110; } }
 	code { background:color-mix(in srgb, var(--fg) 8%, transparent); padding:.1rem .35rem; border-radius:.25rem; font-size:.85em; }
+	form.inline { border:0; padding:0; margin:.4rem 0 0; }
+	form.inline button { margin-top:0; }
 	.ready { border:1px solid #2f9e5f; border-radius:.6rem; padding:1rem 1.25rem; }
 </style>
 </head>
@@ -64,7 +77,7 @@ export function setupPage(params: PageParams): string {
 	<h1>Company Brain</h1>
 	<p class="sub">${escapeHtml(params.origin)}</p>
 	<ul>
-		${check(params.databaseReady, "Database", params.databaseReady ? "Migrations applied." : "The D1 tables don't exist yet. Run <code>bun run db:migrate</code>, then reload.")}
+		${check(params.databaseReady, "Database", databaseDetail(params))}
 		${check(params.hasMemoryKey, "Memory", params.hasMemoryKey ? "Connected to supermemory." : "Set <code>SUPERMEMORY_API_KEY</code> as a Worker secret and redeploy.")}
 		${check(params.providers.length > 0, "Model", params.providers.length > 0 ? `Using ${escapeHtml(params.providers.join(", "))}.` : "Set one of <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>GOOGLE_GENERATIVE_AI_API_KEY</code> or <code>XAI_API_KEY</code>.")}
 		${check(params.slackConfigured, "Slack", params.slackConfigured ? "Credentials stored. Install the app to your workspace." : "Create the Slack app below, then paste its credentials.")}

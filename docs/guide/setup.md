@@ -8,7 +8,7 @@ Setting up Company Brain is a few one-time steps for whoever deploys it. Everyon
 
 Deploy the worker (the Deploy to Cloudflare button, or `wrangler deploy`). It asks for a supermemory API key and one model key. Then open `/setup` on your deployment. It checks, in order:
 
-1. **Database:** the D1 migrations have run. If not, run `bun run db:migrate` and reload.
+1. **Database:** the D1 migrations have run. The worker applies them itself on its first request; if that failed, the page shows why and a **Run migrations** button to retry.
 2. **Memory:** `SUPERMEMORY_API_KEY` is set.
 3. **Model:** at least one of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or `XAI_API_KEY` is set.
 4. **Slack:** the Slack app credentials are stored.
