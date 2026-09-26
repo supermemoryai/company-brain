@@ -1,9 +1,11 @@
+export const SLACK_APP_NAME = "Supermemory Company Brain"
+
 /** Slack app manifest for this deployment, with its own URLs filled in. */
-export function slackAppManifest(origin: string, appName: string) {
+export function slackAppManifest(origin: string, appName = SLACK_APP_NAME) {
 	return {
 		display_information: {
 			name: appName,
-			description: "Company Brain — your team's shared memory, in Slack",
+			description: "Your team's shared memory, in Slack. By supermemory.",
 			background_color: "#000b36",
 		},
 		features: {
