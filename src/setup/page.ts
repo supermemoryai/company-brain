@@ -69,8 +69,8 @@ function keysBody(params: PageParams): string {
 	if (params.providers.length === 0) {
 		rows.push(
 			params.modelKeyUnrecognized
-				? "<li><strong><code>MODEL_API_KEY</code></strong> is set, but it doesn't look like an Anthropic (<code>sk-ant-</code>), OpenAI (<code>sk-</code>), Google (<code>AIza</code>) or xAI (<code>xai-</code>) key. Check it, or set the provider's own variable, like <code>ANTHROPIC_API_KEY</code>.</li>"
-				: "<li><strong><code>MODEL_API_KEY</code></strong> is missing. Use an Anthropic, OpenAI, Google or xAI key, whichever you have.</li>",
+				? "<li><strong><code>MODEL_API_KEY</code></strong> is set, but it doesn't look like an Anthropic (<code>sk-ant-</code>), OpenAI (<code>sk-</code>), Google (<code>AIza</code>), xAI (<code>xai-</code>) or OpenRouter (<code>sk-or-</code>) key. Check it, or set the provider's own variable, like <code>ANTHROPIC_API_KEY</code>.</li>"
+				: "<li><strong><code>MODEL_API_KEY</code></strong> is missing. Use an Anthropic, OpenAI, Google, xAI or OpenRouter key, whichever you have.</li>",
 		)
 	}
 	return `<ul class="todo">${rows.join("")}</ul><p>${SECRET_HOW}</p>`

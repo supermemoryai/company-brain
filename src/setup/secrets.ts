@@ -32,8 +32,10 @@ const configuredPublicUrl = new WeakMap<object, boolean>()
 /** Which provider a model API key belongs to, from its prefix. */
 export function providerForModelKey(
 	key: string,
-): "anthropic" | "openai" | "google" | "xai" | null {
+): "anthropic" | "openai" | "google" | "xai" | "openrouter" | null {
 	if (key.startsWith("sk-ant-")) return "anthropic"
+	// Before the bare "sk-" check: OpenRouter keys share OpenAI's prefix.
+	if (key.startsWith("sk-or-")) return "openrouter"
 	if (key.startsWith("xai-")) return "xai"
 	if (key.startsWith("AIza")) return "google"
 	if (key.startsWith("sk-")) return "openai"
@@ -61,9 +63,12 @@ function applyModelApiKey(env: Env): void {
 		case "xai":
 			env.XAI_API_KEY ||= key
 			return
+		case "openrouter":
+			env.OPENROUTER_API_KEY ||= key
+			return
 		default:
 			console.warn(
-				"[setup] MODEL_API_KEY doesn't look like an Anthropic, OpenAI, Google or xAI key; set the provider's own variable instead.",
+				"[setup] MODEL_API_KEY doesn't look like an Anthropic, OpenAI, Google, xAI or OpenRouter key; set the provider's own variable instead.",
 			)
 	}
 }
