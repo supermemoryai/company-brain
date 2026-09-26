@@ -5,7 +5,7 @@ export function slackAppManifest(origin: string, appName = SLACK_APP_NAME) {
 	return {
 		display_information: {
 			name: appName,
-			description: "Your team's shared memory, in Slack. By supermemory.",
+			description: "A super agent with shared memory that lives in your Slack.",
 			background_color: "#000b36",
 		},
 		features: {
@@ -16,7 +16,7 @@ export function slackAppManifest(origin: string, appName = SLACK_APP_NAME) {
 			},
 			bot_user: { display_name: appName, always_online: true },
 			agent_view: {
-				agent_description: "Super agent with all the context of a company",
+				agent_description: "A super agent with shared memory that lives in your Slack",
 				suggested_prompts: [],
 			},
 		},
