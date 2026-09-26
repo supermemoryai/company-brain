@@ -80,7 +80,8 @@ function slackAppBody(params: PageParams): string {
 	const manifestUrl = `https://api.slack.com/apps?new_app=1&manifest_json=${encodeURIComponent(JSON.stringify(params.manifest))}`
 	return `<ol>
 		<li><a class="btn" href="${escapeHtml(manifestUrl)}" target="_blank" rel="noreferrer">Create the Slack app</a><br>This opens Slack with the app already filled in for this deployment. Pick your workspace, then click <strong>Next</strong> and <strong>Create</strong>.</li>
-		<li>In the app Slack just created, open <strong>Basic Information</strong> and scroll to <strong>App Credentials</strong>. Copy the three values below into this form.</li>
+		<li>In the app Slack just created, stay on <strong>Basic Information</strong>. Scroll down to <strong>Display Information</strong> and upload the app icon, so the bot has its face in Slack: <a class="icon-download" href="/slack-icon.png" download="supermemory-company-brain.png"><img src="/slack-icon.png" alt="" width="40" height="40">Download the icon</a> Then click <strong>Save Changes</strong>.</li>
+		<li>Scroll back up to <strong>App Credentials</strong> and copy the three values below into this form.</li>
 	</ol>
 	<p class="warn">Don't click <em>Install to Workspace</em> in Slack. You'll install from this page in step 4, which is how the brain learns about your workspace and sets itself up.</p>
 	<form method="post" action="/setup/slack">
@@ -181,6 +182,8 @@ export function setupPage(params: PageParams): string {
 	button, .btn { display:inline-block; margin:1rem 0 .4rem; padding:.6rem 1rem; border:0; border-radius:.4rem; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; text-decoration:none; }
 	@media (prefers-color-scheme: dark) { button, .btn { color:#111110; } }
 	.body ol .btn { margin:0 0 .4rem; }
+	.icon-download { display:flex; align-items:center; gap:.6rem; width:max-content; margin:.6rem 0; padding:.35rem .8rem .35rem .35rem; border:1px solid var(--line); border-radius:.6rem; text-decoration:none; color:var(--fg); font-weight:600; font-size:.9rem; }
+	.icon-download img { border-radius:.45rem; display:block; }
 	.banner { border:1px solid var(--warn); border-radius:.6rem; padding:.9rem 1.1rem; margin-bottom:1.5rem; }
 	.banner p { margin:0; }
 	.finished { border:1px solid var(--ok); border-radius:.6rem; padding:1rem 1.25rem; margin-top:1.5rem; }
