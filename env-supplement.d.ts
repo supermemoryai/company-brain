@@ -44,8 +44,10 @@ interface Env {
 }
 
 interface Env {
-	/** Optional Context.dev key for the web-extract tool. */
+	/** Optional Context.dev key; web search and page reading use it when set. */
 	CONTEXT_DEV_API_KEY?: string
+	/** Optional Firecrawl key. Without one, web tools use its free keyless tier. */
+	FIRECRAWL_API_KEY?: string
 }
 
 interface Env {

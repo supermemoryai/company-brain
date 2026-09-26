@@ -7,7 +7,6 @@ import type {
 import { MAX_WORKSPACE_PROMPT_LENGTH } from "@repo/lib/constants"
 import type { Schedule } from "agents"
 import type { ToolSet } from "ai"
-import { hasContextWeb } from "@/lib/context-dev"
 import { normalizeCompanyDomain } from "./company-domain"
 import { creditGrant } from "./journey/log"
 import { getCompanyContext } from "./memory/company-context"
@@ -223,7 +222,8 @@ export async function buildBrainConfiguration(args: {
 		},
 		capabilities: {
 			sandbox: sandboxToolsConfigured(env),
-			webSearch: hasContextWeb(env),
+			// context.dev when keyed, Firecrawl's keyless tier otherwise.
+			webSearch: true,
 		},
 	}
 }
