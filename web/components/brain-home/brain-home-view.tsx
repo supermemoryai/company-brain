@@ -5,7 +5,7 @@ import { dmSans125ClassName } from "@lib/fonts"
 import { cn } from "@lib/utils"
 import { useViewMode } from "@lib/view-mode-context"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowRight, Brain, Check, Loader2 } from "lucide-react"
+import { ArrowRight, Brain, Check, Download, Loader2 } from "lucide-react"
 import {
 	AskInSlackCard,
 	CONNECT_TOOLS_CARD_ID,
@@ -406,12 +406,23 @@ function RecentMemories({
 					Recent memories
 				</p>
 				{memories.length > 0 && (
-					<Link
-						href="/graph"
-						className="text-[12px] font-medium text-[#737373] transition-colors hover:text-[#fafafa]"
-					>
-						See the graph →
-					</Link>
+					<div className="flex items-center gap-4">
+						<a
+							href={`${BACKEND}/brain/memories/export`}
+							download
+							title="Download what the brain remembers as a Markdown file"
+							className="inline-flex items-center gap-1 text-[12px] font-medium text-[#737373] transition-colors hover:text-[#fafafa]"
+						>
+							<Download className="size-3.5" />
+							Export as Markdown
+						</a>
+						<Link
+							href="/graph"
+							className="text-[12px] font-medium text-[#737373] transition-colors hover:text-[#fafafa]"
+						>
+							See the graph →
+						</Link>
+					</div>
 				)}
 			</div>
 
