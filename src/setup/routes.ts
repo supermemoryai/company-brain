@@ -8,6 +8,8 @@ import type { AppContext } from "@/types"
 import { slackCredentials, storeSlackCredentials } from "./config-store"
 import { slackAppManifest } from "./manifest"
 import { setupPage } from "./page"
+import { providerForModelKey } from "./secrets"
+import { sandboxBackend } from "@/lib/brain/tools/sandbox/availability"
 
 export const setupRoutes = new Hono<AppContext>()
 	.get("/", async (c) => {
@@ -32,6 +34,12 @@ export const setupRoutes = new Hono<AppContext>()
 					c.req.query("migrate_error") ??
 					("error" in migrations ? migrations.error : null),
 				hasMemoryKey: Boolean(c.env.SUPERMEMORY_API_KEY?.trim()),
+				modelKeyUnrecognized: Boolean(
+					c.env.MODEL_API_KEY?.trim() &&
+						!providerForModelKey(c.env.MODEL_API_KEY.trim()),
+				),
+				paidFeatures: Boolean(c.env.LOADER),
+				sandbox: sandboxBackend(c.env),
 				providers,
 				slackConfigured: Boolean(slack),
 				signedIn: Boolean(c.get("user")),

@@ -4,6 +4,9 @@ type PageParams = {
 	pendingMigrations: string[]
 	migrationError: string | null
 	hasMemoryKey: boolean
+	modelKeyUnrecognized: boolean
+	paidFeatures: boolean
+	sandbox: "daytona" | "container" | null
 	providers: string[]
 	slackConfigured: boolean
 	signedIn: boolean
@@ -26,6 +29,61 @@ function escapeHtml(value: string): string {
 
 function check(done: boolean, label: string, detail: string): string {
 	return `<li class="${done ? "done" : "todo"}"><span class="mark">${done ? "✓" : "○"}</span><div><strong>${label}</strong><p>${detail}</p></div></li>`
+}
+
+// Optional rows never block setup, so an unset one reads as a choice, not a gap.
+function option(on: boolean, label: string, detail: string): string {
+	return `<li class="${on ? "done" : "optional"}"><span class="mark">${on ? "✓" : "–"}</span><div><strong>${label}</strong><p>${detail}</p></div></li>`
+}
+
+const SECRET_HOW =
+	"Add it as a secret in the Cloudflare dashboard (your worker → Settings → Variables and Secrets), or run <code>wrangler secret put NAME</code>. Then reload this page."
+
+const PAID_HOW =
+	"Uncomment the <strong>Workers Paid</strong> block in <code>wrangler.jsonc</code> and redeploy."
+
+const PROVIDER_NAMES: Record<string, string> = {
+	anthropic: "Anthropic",
+	openai: "OpenAI",
+	google: "Google",
+	xai: "xAI",
+}
+
+function modelDetail(params: PageParams): string {
+	if (params.providers.length > 0) {
+		return `Using ${escapeHtml(params.providers.map((p) => PROVIDER_NAMES[p] ?? p).join(", "))}.`
+	}
+	if (params.modelKeyUnrecognized) {
+		return "<code>MODEL_API_KEY</code> is set, but it doesn't look like an Anthropic (<code>sk-ant-</code>), OpenAI (<code>sk-</code>), Google (<code>AIza</code>) or xAI (<code>xai-</code>) key. Check it, or set the provider's own variable, like <code>ANTHROPIC_API_KEY</code>."
+	}
+	return `Set <code>MODEL_API_KEY</code> to an Anthropic, OpenAI, Google or xAI key. ${SECRET_HOW}`
+}
+
+function planRows(params: PageParams): string {
+	const plan = option(
+		params.paidFeatures,
+		"Workers Paid features",
+		params.paidFeatures
+			? "On: the code sandbox container and Code Mode for connected tools."
+			: `Off. The brain works on the free plan, but Workers Paid ($5/mo) gives it room for long, multi-step answers, a built-in code sandbox, and Code Mode for connected tools. To turn them on, upgrade your Cloudflare account to Workers Paid, then ${PAID_HOW.charAt(0).toLowerCase()}${PAID_HOW.slice(1)}`,
+	)
+	const sandbox = option(
+		params.sandbox !== null,
+		"Code sandbox",
+		params.sandbox === "daytona"
+			? "On, running on Daytona."
+			: params.sandbox === "container"
+				? "On, running on a Cloudflare container in your account."
+				: "Off, so the brain can't run code or work in repos. Set the <code>DAYTONA_API_KEY</code> secret to use Daytona on any plan, or turn on the Workers Paid features for a built-in container.",
+	)
+	const tools = option(
+		params.paidFeatures,
+		"Code Mode for connected tools",
+		params.paidFeatures
+			? "On: the brain can chain several tool calls in one step."
+			: "Off, so connected tools (GitHub, Linear and the rest) are called one at a time. They still work. Code Mode comes with the Workers Paid features.",
+	)
+	return plan + sandbox + tools
 }
 
 function databaseDetail(params: PageParams): string {
@@ -58,9 +116,15 @@ export function setupPage(params: PageParams): string {
 	ul { list-style:none; padding:0; margin:0 0 2.5rem; }
 	li { display:flex; gap:.9rem; padding:1rem 0; border-top:1px solid var(--line); }
 	li p { margin:.2rem 0 0; color:var(--muted); font-size:.9rem; }
-	.mark { font-size:1.1rem; width:1.2rem; }
+	.mark { font-size:1.1rem; width:1.2rem; flex:none; text-align:center; }
 	.done .mark { color:#2f9e5f; }
 	.todo .mark { color:var(--muted); }
+	.optional .mark { color:var(--muted); }
+	h2 { font-size:1rem; margin:0 0 .25rem; letter-spacing:-.01em; }
+	ol.steps { padding-left:1.2rem; margin:.5rem 0 0; }
+	ol.steps li { display:list-item; border:0; padding:.35rem 0; color:var(--muted); font-size:.95rem; }
+	ol.steps strong { color:var(--fg); }
+	a { color:inherit; }
 	form { border:1px solid var(--line); border-radius:.6rem; padding:1.25rem; }
 	label { display:block; font-size:.85rem; font-weight:600; margin:.9rem 0 .3rem; }
 	input { width:100%; box-sizing:border-box; padding:.6rem .7rem; border:1px solid var(--line); border-radius:.4rem; background:transparent; color:inherit; font:inherit; }
@@ -76,18 +140,28 @@ export function setupPage(params: PageParams): string {
 <main>
 	<h1>Company Brain</h1>
 	<p class="sub">${escapeHtml(params.origin)}</p>
+	<h2>Required</h2>
 	<ul>
 		${check(params.databaseReady, "Database", databaseDetail(params))}
-		${check(params.hasMemoryKey, "Memory", params.hasMemoryKey ? "Connected to supermemory." : "Set <code>SUPERMEMORY_API_KEY</code> as a Worker secret and redeploy.")}
-		${check(params.providers.length > 0, "Model", params.providers.length > 0 ? `Using ${escapeHtml(params.providers.join(", "))}.` : "Set <code>MODEL_API_KEY</code> to an Anthropic, OpenAI, Google or xAI key.")}
+		${check(params.hasMemoryKey, "Memory", params.hasMemoryKey ? "Connected to supermemory." : `Set <code>SUPERMEMORY_API_KEY</code>. Get a key at <a href="https://console.supermemory.ai" target="_blank" rel="noreferrer">console.supermemory.ai</a>. ${SECRET_HOW}`)}
+		${check(params.providers.length > 0, "Model", modelDetail(params))}
 		${check(params.slackConfigured, "Slack", params.slackConfigured ? "Credentials stored. Install the app to your workspace." : "Create the Slack app below, then paste its credentials.")}
 	</ul>
+	<h2>Plan and optional features</h2>
+	<ul>
+		${planRows(params)}
+	</ul>
+	<h2>Slack</h2>
 	${
 		params.slackConfigured
 			? params.signedIn
 				? `<div class="ready"><strong>${ready ? "Ready." : "Slack is configured."}</strong><p>Install to your workspace and say hello to the bot.</p><a class="btn" href="/brain/slack/oauth/install">Install to Slack</a> <a class="btn" href="/">Open the app</a></div>`
 				: `<div class="ready"><strong>Slack is configured.</strong><p>Sign in with your Slack account. The first person to sign in owns this deployment; then install the bot to your workspace.</p><a class="btn" href="/auth/slack/login">Sign in with Slack</a></div>`
-			: `<p>Create a Slack app with this deployment's URLs already filled in, then copy its credentials back here.</p>
+			: `<ol class="steps">
+		<li><strong>Create the Slack app.</strong> The button opens Slack with this deployment's URLs already filled in. Pick your workspace and create it.</li>
+		<li><strong>Copy its credentials.</strong> In the new app, open <em>Basic Information → App Credentials</em> and paste the Client ID, Client Secret and Signing Secret below.</li>
+		<li><strong>Verify the event URL.</strong> After saving, go back to the app's <em>Event Subscriptions</em> page and click <em>Retry</em> so Slack confirms it can reach this deployment.</li>
+	</ol>
 	<a class="btn" href="${escapeHtml(manifestUrl)}" target="_blank" rel="noreferrer">Create the Slack app</a>
 	<form method="post" action="/setup/slack">
 		<label for="clientId">Client ID</label>
