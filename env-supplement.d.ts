@@ -49,6 +49,8 @@ interface Env {
 }
 
 interface Env {
+	/** "on" when the Workers Paid container block is enabled in wrangler.jsonc. */
+	CONTAINER_SANDBOX?: string
 	/** The built app UI (web/), served for every path the worker doesn't own. */
 	ASSETS: Fetcher
 }
@@ -56,4 +58,9 @@ interface Env {
 interface Env {
 	/** Cloudflare Sandbox containers for the sandbox tools (git, shell, files). */
 	Sandbox?: DurableObjectNamespace<import("@cloudflare/sandbox").Sandbox>
+}
+
+declare module "*.wasm" {
+	const module: WebAssembly.Module
+	export default module
 }

@@ -22,7 +22,7 @@ A test is failing and the stack trace alone isn't enough. You want Company Brain
 
 Company Brain spins up an **isolated workspace**, clones what it needs, runs the command, and reads the output. It's not guessing from static code alone; it's executing. It can also produce files (a chart, a PDF, a CSV) and upload them to the thread.
 
-The workspace is a [Cloudflare Sandbox](https://developers.cloudflare.com/sandbox/) container running in your own Cloudflare account, with git and Python (numpy, pandas, matplotlib) available. It sleeps after 30 minutes idle, and a fresh one starts the next time it's needed. Containers need the Workers Paid plan: uncomment the Workers Paid block in `wrangler.jsonc` to enable them, and have Docker running for local development. On the free plan, or if you prefer it, set `DAYTONA_API_KEY` and workspaces run on Daytona instead. With neither, the sandbox tools stay hidden.
+The workspace is a [Cloudflare Sandbox](https://developers.cloudflare.com/sandbox/) container running in your own Cloudflare account, with git and Python (numpy, pandas, matplotlib) available. It sleeps after 30 minutes idle, and a fresh one starts the next time it's needed. Containers need the Workers Paid plan: uncomment the Workers Paid block in `wrangler.jsonc`, set `CONTAINER_SANDBOX` to `"on"`, and have Docker running for local development. On the free plan, or if you prefer it, set `DAYTONA_API_KEY` and workspaces run on Daytona instead. With neither, the sandbox tools stay hidden.
 
 Guardrails are intentional, so it's safe to hand real tasks to:
 

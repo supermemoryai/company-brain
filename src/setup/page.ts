@@ -5,7 +5,6 @@ type PageParams = {
 	migrationError: string | null
 	hasMemoryKey: boolean
 	modelKeyUnrecognized: boolean
-	paidFeatures: boolean
 	sandbox: "daytona" | "container" | null
 	providers: string[]
 	slackConfigured: boolean
@@ -40,7 +39,7 @@ const SECRET_HOW =
 	"Add it as a secret in the Cloudflare dashboard (your worker → Settings → Variables and Secrets), or run <code>wrangler secret put NAME</code>. Then reload this page."
 
 const PAID_HOW =
-	"Uncomment the <strong>Workers Paid</strong> block in <code>wrangler.jsonc</code> and redeploy."
+	"Uncomment the <strong>Workers Paid</strong> block in <code>wrangler.jsonc</code>, set <code>CONTAINER_SANDBOX</code> to <code>\"on\"</code>, and redeploy."
 
 const PROVIDER_NAMES: Record<string, string> = {
 	anthropic: "Anthropic",
@@ -60,30 +59,15 @@ function modelDetail(params: PageParams): string {
 }
 
 function planRows(params: PageParams): string {
-	const plan = option(
-		params.paidFeatures,
-		"Workers Paid features",
-		params.paidFeatures
-			? "On: the code sandbox container and Code Mode for connected tools."
-			: `Off. The brain works on the free plan, but Workers Paid ($5/mo) gives it room for long, multi-step answers, a built-in code sandbox, and Code Mode for connected tools. To turn them on, upgrade your Cloudflare account to Workers Paid, then ${PAID_HOW.charAt(0).toLowerCase()}${PAID_HOW.slice(1)}`,
-	)
-	const sandbox = option(
+	return option(
 		params.sandbox !== null,
 		"Code sandbox",
 		params.sandbox === "daytona"
 			? "On, running on Daytona."
 			: params.sandbox === "container"
 				? "On, running on a Cloudflare container in your account."
-				: "Off, so the brain can't run code or work in repos. Set the <code>DAYTONA_API_KEY</code> secret to use Daytona on any plan, or turn on the Workers Paid features for a built-in container.",
+				: `Off, so the brain can't run code or work in repos. Set the <code>DAYTONA_API_KEY</code> secret to use Daytona on any plan. On Workers Paid you can use a built-in container instead: ${PAID_HOW.charAt(0).toLowerCase()}${PAID_HOW.slice(1)}`,
 	)
-	const tools = option(
-		params.paidFeatures,
-		"Code Mode for connected tools",
-		params.paidFeatures
-			? "On: the brain can chain several tool calls in one step."
-			: "Off, so connected tools (GitHub, Linear and the rest) are called one at a time. They still work. Code Mode comes with the Workers Paid features.",
-	)
-	return plan + sandbox + tools
 }
 
 function databaseDetail(params: PageParams): string {
@@ -120,6 +104,7 @@ export function setupPage(params: PageParams): string {
 	.done .mark { color:#2f9e5f; }
 	.todo .mark { color:var(--muted); }
 	.optional .mark { color:var(--muted); }
+	.note { color:var(--muted); font-size:.9rem; margin:.4rem 0 .6rem; }
 	h2 { font-size:1rem; margin:0 0 .25rem; letter-spacing:-.01em; }
 	ol.steps { padding-left:1.2rem; margin:.5rem 0 0; }
 	ol.steps li { display:list-item; border:0; padding:.35rem 0; color:var(--muted); font-size:.95rem; }
@@ -148,6 +133,7 @@ export function setupPage(params: PageParams): string {
 		${check(params.slackConfigured, "Slack", params.slackConfigured ? "Credentials stored. Install the app to your workspace." : "Create the Slack app below, then paste its credentials.")}
 	</ul>
 	<h2>Plan and optional features</h2>
+	<p class="note">The brain runs on Cloudflare's free plan. <a href="https://developers.cloudflare.com/workers/platform/pricing/" target="_blank" rel="noreferrer">Workers Paid</a> ($5/mo) is better if your team leans on it: the free plan allows 50 outbound calls per request, which can cut long, multi-step answers short, and Paid can run the code sandbox on a built-in container.</p>
 	<ul>
 		${planRows(params)}
 	</ul>

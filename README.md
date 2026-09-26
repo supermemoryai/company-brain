@@ -121,9 +121,10 @@ Company Brain runs on Cloudflare's free plan. [Workers Paid](https://developers.
 |---|---|---|
 | **Long, multi-step answers** | Can get cut short: the free plan allows 50 outbound calls per request | Room for the brain's full tool loop |
 | **Code sandbox** (shell, git, Python) | With a [Daytona](https://daytona.io) key (`DAYTONA_API_KEY`) | Built in, on a Cloudflare container. Daytona still works if you prefer it. |
-| **Connected tools** | Called one at a time | Code Mode, which chains several calls in one step |
 
-To switch on the paid features, uncomment the **Workers Paid** block in `wrangler.jsonc` and redeploy.
+Everything else works the same on both, including Code Mode: when the brain writes code to chain tool calls or crunch your team directory, it runs in [QuickJS](https://github.com/justjake/quickjs-emscripten) inside the worker, not on paid Dynamic Workers.
+
+To use the built-in container on Workers Paid, uncomment the **Workers Paid** block in `wrangler.jsonc`, set `CONTAINER_SANDBOX` to `"on"`, and redeploy.
 
 ---
 
