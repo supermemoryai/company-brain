@@ -137,7 +137,7 @@ export const MCP_CATALOG: McpCatalogEntry[] = [
 const NON_LEASEABLE_RESERVED_SLUGS = new Set(["gmail"])
 
 export const OFFERABLE_MCP_CATALOG = MCP_CATALOG.filter(
-	(entry) => !connectorPause(entry.slug),
+	(entry) => !connectorPause(entry.slug).paused,
 )
 
 export function getCatalogEntry(slug: string): McpCatalogEntry | undefined {

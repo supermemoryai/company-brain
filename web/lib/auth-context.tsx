@@ -22,6 +22,8 @@ type Session = {
 	user: SessionUser | null
 	org: SessionOrg | null
 	role: MemberRole | null
+	/** Only reported when signed out: whether /setup has been finished. */
+	setupComplete?: boolean
 }
 
 type AuthValue = Session & {

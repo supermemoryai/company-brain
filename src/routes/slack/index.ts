@@ -535,7 +535,23 @@ function parseSkillInteractionPayload(rawBody: Uint8Array): {
 export const slackRoutes = new Hono<AppContext>()
 	.post("/events", async (c) => {
 		const rawBody = new Uint8Array(await c.req.raw.clone().arrayBuffer())
-		const signingSecret = (await slackCredentials(c.env))?.signingSecret ?? ""
+		const credentials = await slackCredentials(c.env)
+		if (!credentials) {
+			// Slack checks this URL the moment the app is created from the manifest,
+			// before its signing secret has been pasted into /setup. Echoing the
+			// challenge reveals nothing and saves a manual "Retry" in Slack later.
+			try {
+				const body = JSON.parse(new TextDecoder().decode(rawBody)) as {
+					type?: string
+					challenge?: unknown
+				}
+				if (body.type === "url_verification" && typeof body.challenge === "string") {
+					return c.json({ challenge: body.challenge })
+				}
+			} catch {}
+			return c.json({ error: "Slack is not configured yet" }, 503)
+		}
+		const signingSecret = credentials.signingSecret
 
 		if (!verifySlackSignature(rawBody, c.req.raw.headers, signingSecret)) {
 			return c.json({ error: "invalid signature" }, 401)

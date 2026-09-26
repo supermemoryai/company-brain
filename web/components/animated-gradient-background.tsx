@@ -13,7 +13,7 @@ export function AnimatedGradientBackground({
 			<motion.div
 				className="absolute top-0 left-0 right-0 bottom-0 bg-size-[150%_auto] bg-top bg-no-repeat"
 				style={{
-					backgroundImage: "url(/onboarding/bg-gradient-0.png)",
+					backgroundImage: "url(/onboarding/bg-gradient-0.webp)",
 					top: animateFromBottom ? undefined : topPosition,
 				}}
 				initial={{ opacity: 0 }}
@@ -37,7 +37,7 @@ export function AnimatedGradientBackground({
 			<motion.div
 				className="absolute top-0 left-0 right-0 bottom-0 bg-size-[150%_auto] bg-top bg-no-repeat"
 				style={{
-					backgroundImage: "url(/onboarding/bg-gradient-1.png)",
+					backgroundImage: "url(/onboarding/bg-gradient-1.webp)",
 					top: animateFromBottom ? undefined : topPosition,
 				}}
 				initial={{ opacity: 0 }}
@@ -62,7 +62,7 @@ export function AnimatedGradientBackground({
 				className="absolute inset-0 bg-cover bg-bottom bg-no-repeat"
 				transition={{ duration: 0.75, ease: "easeOut", bounce: 0 }}
 				style={{
-					backgroundImage: "url(/bg-rectangle.jpg)",
+					backgroundImage: "url(/bg-rectangle.webp)",
 					mixBlendMode: "soft-light",
 					opacity: 0.4,
 				}}

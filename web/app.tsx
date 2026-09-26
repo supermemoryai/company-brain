@@ -49,12 +49,19 @@ function useSlackHandoff() {
 }
 
 export function App() {
-	const { user, org, isRestoring } = useAuth()
+	const { user, org, isRestoring, setupComplete } = useAuth()
 	const { viewMode } = useViewMode()
 	const [handoff, dismissHandoff] = useSlackHandoff()
 
 	if (isRestoring) return <div className="min-h-dvh bg-[#05080D]" />
-	if (!user || !org) return <SignIn />
+	if (!user || !org) {
+		// A fresh deploy lands here first; setup is where it needs to go.
+		if (setupComplete === false) {
+			window.location.replace("/setup")
+			return <div className="min-h-dvh bg-[#05080D]" />
+		}
+		return <SignIn />
+	}
 
 	return (
 		<>

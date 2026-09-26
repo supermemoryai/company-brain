@@ -151,11 +151,13 @@ export async function greetSlackInstaller(
 			channel,
 		})
 		await delay(BUBBLE_DELAY_MS)
+		// Top level, not under the greeting's thread: this is the installer's view
+		// of teammates being brought in, and a thread reply is easy to miss.
 		const rolloutCardTs = await postSlackMessage(
 			args.botToken,
 			channel,
 			AUTOMATIC_TEAM_INVITE_FALLBACK,
-			parentTs,
+			undefined,
 			automaticTeamInviteProgressBlocks({ phase: "enumerating" }),
 		)
 		// The rollout button is the installer's only one; never skip it.

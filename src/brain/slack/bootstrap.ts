@@ -1,5 +1,5 @@
 import { getAgentByName } from "agents"
-import { orgMetadataAsJsonb } from "@/lib/org-metadata-sql"
+import { mergedOrgMetadata } from "@/lib/org-metadata-sql"
 import { identifyCompanyGroup } from "@/lib/posthog"
 import { companyDomain } from "../company-domain"
 import { getSlackUserInfo } from "./client"
@@ -166,14 +166,13 @@ export async function bootstrapSlackWorkspace(
 					? { brainWorkspaceName: args.teamName }
 					: {}),
 			}
-			// jsonb_set merge, not read-modify-write: a concurrent billing sync
+			// A merge in SQL, not read-modify-write: a concurrent billing sync
 			// writing activeProducts must not be clobbered by our stale copy.
 			if (Object.keys(patch).length > 0) {
-				const { sql } = await import("@repo/db")
 				await db(env)
 					.update(organization)
 					.set({
-						metadata: sql`(${orgMetadataAsJsonb()} || ${JSON.stringify(patch)}::jsonb)::json`,
+						metadata: mergedOrgMetadata(patch),
 					})
 					.where(eq(organization.id, args.orgId))
 			}

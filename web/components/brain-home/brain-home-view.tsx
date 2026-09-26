@@ -1,10 +1,11 @@
 import { BACKEND } from "@lib/api"
 import { useAuth } from "@lib/auth-context"
+import { Link } from "@lib/navigation"
 import { dmSans125ClassName } from "@lib/fonts"
 import { cn } from "@lib/utils"
 import { useViewMode } from "@lib/view-mode-context"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowRight, Check, Loader2 } from "lucide-react"
+import { ArrowRight, Brain, Check, Loader2 } from "lucide-react"
 import {
 	AskInSlackCard,
 	CONNECT_TOOLS_CARD_ID,
@@ -37,8 +38,42 @@ type BrainOverview = {
 	members: { count: number }
 }
 
-// The hosted home also counted memories and listed recent documents through
-// the private documents API; the public API has no listing, so those are gone.
+type BrainMemories = {
+	count: number
+	recent: { id: string; memory: string; updatedAt: string }[]
+}
+
+function useBrainMemories(enabled: boolean) {
+	const { org } = useAuth()
+	return useQuery({
+		queryKey: ["brain-memories", org?.id],
+		queryFn: async (): Promise<BrainMemories | null> => {
+			const res = await fetch(`${BACKEND}/brain/memories`, {
+				credentials: "include",
+			})
+			if (!res.ok) return null
+			return (await res.json()) as BrainMemories
+		},
+		staleTime: 30_000,
+		enabled,
+	})
+}
+
+function formatWhen(iso: string): string {
+	const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+	if (minutes < 1) return "just now"
+	if (minutes < 60) return `${minutes}m ago`
+	const hours = Math.round(minutes / 60)
+	if (hours < 24) return `${hours}h ago`
+	const days = Math.round(hours / 24)
+	return days < 30
+		? `${days}d ago`
+		: new Date(iso).toLocaleDateString(undefined, {
+				month: "short",
+				day: "numeric",
+			})
+}
+
 function useBrainOverview() {
 	const { user, org, isAdmin } = useAuth()
 	const enabled = !!user && !!org?.id
@@ -74,6 +109,7 @@ function useBrainOverview() {
 
 export function BrainHomeView() {
 	const o = useBrainOverview()
+	const memories = useBrainMemories(!o.loading)
 	const board = useConnectionsBoard()
 	// Rows with no reported state (older orgs, pre-Slack) don't count or render.
 	const milestones = [
@@ -89,15 +125,19 @@ export function BrainHomeView() {
 	return (
 		<div className="mx-auto max-w-[1080px] space-y-6">
 			<StatsRow
+				memories={memories.data?.count ?? null}
 				connected={o.connectedCount}
 				members={o.membersCount}
 				setupDone={milestonesDone}
 				setupTotal={milestonesTotal}
-				teamName={o.teamName}
 			/>
 			<div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
 				<div className="min-w-0 space-y-6">
 					{board.showBoard && <ConnectToolsCard board={board} />}
+					<RecentMemories
+						memories={memories.data?.recent ?? []}
+						loading={memories.isPending}
+					/>
 				</div>
 				<div className="min-w-0 space-y-6">
 					{!o.loading && (
@@ -119,23 +159,26 @@ export function BrainHomeView() {
 }
 
 function StatsRow({
+	memories,
 	connected,
 	members,
 	setupDone,
 	setupTotal,
-	teamName,
 }: {
+	memories: number | null
 	connected: number
 	members: number
 	setupDone: number
 	setupTotal: number
-	teamName: string | null
 }) {
 	const tiles: { label: string; mobile?: string; value: string }[] = [
+		{
+			label: "Memories",
+			value: memories === null ? "–" : memories.toLocaleString(),
+		},
 		{ label: "Connected sources", mobile: "Sources", value: String(connected) },
 		{ label: "Active members", mobile: "Members", value: String(members) },
 		{ label: "Setup", value: `${setupDone}/${setupTotal}` },
-		{ label: "Slack", value: teamName ?? "—" },
 	]
 	return (
 		<section
@@ -337,6 +380,78 @@ function BrainTimeline({
 					</li>
 				))}
 			</ul>
+		</section>
+	)
+}
+
+function RecentMemories({
+	memories,
+	loading,
+}: {
+	memories: BrainMemories["recent"]
+	loading: boolean
+}) {
+	return (
+		<section
+			className="min-w-0 rounded-[18px] bg-[#1B1F24] p-5"
+			style={cardStyle}
+		>
+			<div className="mb-3 flex items-center justify-between gap-3">
+				<p
+					className={cn(
+						"text-[15px] font-semibold text-[#fafafa]",
+						dmSans125ClassName(),
+					)}
+				>
+					Recent memories
+				</p>
+				{memories.length > 0 && (
+					<Link
+						href="/graph"
+						className="text-[12px] font-medium text-[#737373] transition-colors hover:text-[#fafafa]"
+					>
+						See the graph →
+					</Link>
+				)}
+			</div>
+
+			{loading ? (
+				<div className="flex items-center gap-2 py-6 text-[13px] font-medium text-[#737373]">
+					<Loader2 className="size-4 animate-spin" />
+					Loading…
+				</div>
+			) : memories.length === 0 ? (
+				<div className="flex items-center gap-3 rounded-[12px] bg-[#14161A] px-4 py-5">
+					<div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#0F1217] text-[#525D6E]">
+						<Brain className="size-4" />
+					</div>
+					<div className="min-w-0">
+						<p className="text-[13px] font-medium text-[#fafafa]">
+							No memories yet
+						</p>
+						<p className="mt-0.5 text-[12px] font-medium leading-[1.5] text-[#737373]">
+							Once the brain is in your Slack channels, what your team decides
+							and works on shows up here.
+						</p>
+					</div>
+				</div>
+			) : (
+				<ul className="divide-y divide-white/[0.04]">
+					{memories.map((memory) => (
+						<li key={memory.id} className="flex items-start gap-3 px-1 py-2.5">
+							<div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-[#0F1217] text-[#737373]">
+								<Brain className="size-3.5" />
+							</div>
+							<p className="min-w-0 flex-1 text-[13px] font-medium leading-[1.45] text-[#fafafa] line-clamp-2">
+								{memory.memory}
+							</p>
+							<span className="shrink-0 pt-0.5 text-[11px] font-medium text-[#737373]">
+								{formatWhen(memory.updatedAt)}
+							</span>
+						</li>
+					))}
+				</ul>
+			)}
 		</section>
 	)
 }
