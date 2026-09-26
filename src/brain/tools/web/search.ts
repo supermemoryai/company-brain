@@ -8,6 +8,7 @@ import {
 } from "@/lib/context-dev"
 import type { BrainCostLedger } from "../../billing/cost"
 import { logPreview } from "../../observability/log-utils"
+import { firecrawlSearch } from "./firecrawl"
 
 const SEARCH_TIMEOUT_MS = 15_000
 /** Measured: 5 results of title+url+description is ~330 tokens, vs ~1,070 for the old LLM summary. */
@@ -25,7 +26,8 @@ export function createBrainWebSearchTool(
 	traceId?: string,
 	costLedger?: BrainCostLedger,
 ) {
-	if (!hasContextWeb(env)) return null
+	// context.dev when its key is set; otherwise Firecrawl, which needs none.
+	const useContext = hasContextWeb(env)
 
 	return tool({
 		description:
@@ -52,14 +54,27 @@ export function createBrainWebSearchTool(
 				`[company-brain]${tag} search_web start query="${logPreview(query)}"`,
 			)
 			try {
-				// Retries and Retry-After backoff live in the client's schedule.
-				const response = await contextSearch(
-					env,
-					{ query, freshness, timeoutMS: SEARCH_TIMEOUT_MS },
-					tag,
-				)
-				costLedger?.recordVendorUsd("context.dev", creditsUsd(response))
-				const { results } = response
+				// Retries and Retry-After backoff live in the context.dev client.
+				const results = useContext
+					? await contextSearch(
+							env,
+							{ query, freshness, timeoutMS: SEARCH_TIMEOUT_MS },
+							tag,
+						).then((response) => {
+							costLedger?.recordVendorUsd("context.dev", creditsUsd(response))
+							return response.results.map((r) => ({
+								...r,
+								label: `${r.title} (${r.relevance} relevance)`,
+							}))
+						})
+					: (
+							await firecrawlSearch(env, {
+								query,
+								freshness,
+								limit: KEEP_RESULTS,
+								timeoutMs: SEARCH_TIMEOUT_MS,
+							})
+						).map((r) => ({ ...r, label: r.title }))
 				const kept = results.slice(0, KEEP_RESULTS)
 				console.log(
 					`[company-brain]${tag} search_web finish ms=${Date.now() - t} results=${results.length} kept=${kept.length}`,
@@ -68,10 +83,7 @@ export function createBrainWebSearchTool(
 					return `No web results for "${query}". Try different wording, or drop any site: filter.`
 				}
 				return kept
-					.map(
-						(r) =>
-							`- ${r.title} (${r.relevance} relevance)\n  ${r.url}\n  ${r.description}`,
-					)
+					.map((r) => `- ${r.label}\n  ${r.url}\n  ${r.description}`)
 					.join("\n")
 			} catch (err) {
 				console.warn(`[company-brain]${tag} search_web error:`, err)

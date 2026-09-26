@@ -21,3 +21,8 @@ MODEL_API_KEY=""
 # you prefer it, set a Daytona key:
 # uncomment this, or add it later with `wrangler secret put DAYTONA_API_KEY`.
 # DAYTONA_API_KEY=""
+
+# Web search and page reading use Firecrawl's free keyless tier by default
+# (1,000 credits a month). Set a key for more, or a context.dev key to use that.
+# FIRECRAWL_API_KEY=""
+# CONTEXT_DEV_API_KEY=""

@@ -358,11 +358,6 @@ export async function assembleTurnTools(
 		traceId,
 		args.costLedger,
 	)
-	if (!webSearchTool) {
-		console.warn(
-			`[company-brain][${traceId}] search_web unavailable reason=missing_context_dev_api_key`,
-		)
-	}
 	const tools: ToolSet = {
 		search_company_brain: brainTool,
 		resolve_entity: resolveEntityTool,

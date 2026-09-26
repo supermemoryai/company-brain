@@ -8,6 +8,7 @@ import {
 } from "@/lib/context-dev"
 import type { BrainCostLedger } from "../../billing/cost"
 import { logPreview } from "../../observability/log-utils"
+import { firecrawlScrape } from "./firecrawl"
 
 const SCRAPE_TIMEOUT_MS = 30_000
 const MAX_URLS = 5
@@ -54,7 +55,8 @@ export function createBrainWebExtractTool(
 	traceId?: string,
 	costLedger?: BrainCostLedger,
 ) {
-	if (!hasContextWeb(env)) return null
+	// context.dev when its key is set; otherwise Firecrawl, which needs none.
+	const useContext = hasContextWeb(env)
 
 	return tool({
 		description: `Read the full text of public web pages you already have URLs for. Use this instead of search_web when someone shares a link, or when a search result's snippet is not enough. Handles PDFs and YouTube links (returns the transcript when captions exist). Up to ${MAX_URLS} URLs per call, read in parallel. Not for private or logged-in pages, and not for our own Slack, GitHub, Notion, or Linear — reach those through their connected app tools.`,
@@ -77,20 +79,27 @@ export function createBrainWebExtractTool(
 			const fetched = await Promise.all(
 				urls.map(async (url): Promise<Page | string> => {
 					try {
-						const page = await contextScrapeMarkdown(
-							env,
-							url,
-							SCRAPE_TIMEOUT_MS,
-							tag,
-						)
-						costLedger?.recordVendorUsd("context.dev", creditsUsd(page))
-						const markdown = page.markdown?.trim()
+						const page = useContext
+							? await contextScrapeMarkdown(
+									env,
+									url,
+									SCRAPE_TIMEOUT_MS,
+									tag,
+								).then((scraped) => {
+									costLedger?.recordVendorUsd(
+										"context.dev",
+										creditsUsd(scraped),
+									)
+									return {
+										title: scraped.metadata?.title ?? url,
+										url: scraped.url,
+										markdown: scraped.markdown ?? "",
+									}
+								})
+							: await firecrawlScrape(env, url, SCRAPE_TIMEOUT_MS)
+						const markdown = page.markdown.trim()
 						if (!markdown) return `## ${url}\n\nThe page returned no text.`
-						return {
-							title: page.metadata?.title ?? url,
-							url: page.url,
-							markdown,
-						}
+						return { title: page.title, url: page.url, markdown }
 					} catch (err) {
 						console.warn(
 							`[company-brain]${tag} web_extract failed url=${url}:`,

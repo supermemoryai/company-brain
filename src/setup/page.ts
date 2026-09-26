@@ -112,8 +112,9 @@ function extras(params: PageParams): string {
 				? "On, running on a Cloudflare container in your account."
 				: "Off, so the brain can't run code or work in repos. Set the <code>DAYTONA_API_KEY</code> secret to use Daytona on any plan. On Workers Paid you can use a built-in container instead: uncomment the <strong>Workers Paid</strong> block in <code>wrangler.jsonc</code>, set <code>CONTAINER_SANDBOX</code> to <code>\"on\"</code>, and redeploy."
 	return `<details class="extras">
-	<summary>Optional: code sandbox and plan</summary>
+	<summary>Optional: code sandbox, web search and plan</summary>
 	<p><strong>Code sandbox.</strong> ${sandbox}</p>
+	<p><strong>Web search.</strong> On, using <a href="https://www.firecrawl.dev" target="_blank" rel="noreferrer">Firecrawl</a>'s free tier, no key needed (1,000 searches and page reads a month). Set <code>FIRECRAWL_API_KEY</code> for more.</p>
 	<p><strong>Plan.</strong> The brain runs on Cloudflare's free plan. <a href="https://developers.cloudflare.com/workers/platform/pricing/" target="_blank" rel="noreferrer">Workers Paid</a> ($5/mo) is better if your team leans on it: the free plan allows 50 outbound calls per request, which can cut long, multi-step answers short, and Paid can run the sandbox on a built-in container.</p>
 </details>`
 }
