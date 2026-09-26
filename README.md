@@ -101,7 +101,7 @@ TypeScript on Cloudflare Workers, Durable Objects and D1, with memory on [superm
 **1. Click deploy.** It asks for two secrets:
 
 - `SUPERMEMORY_API_KEY`: where the brain keeps its memory. Get one at [console.supermemory.ai](https://console.supermemory.ai).
-- `MODEL_API_KEY`: an Anthropic, OpenAI, Google or xAI key, whichever you have. The brain works out the provider from the key. You pay the provider directly, no markup.
+- `MODEL_API_KEY`: an Anthropic, OpenAI, Google or xAI key, whichever you have. The brain works out the provider from the key. You pay the provider directly, no markup. An [OpenRouter](https://openrouter.ai) key works too, and reaches every provider's models through one account.
 
 Everything else is provisioned for you: D1, KV, Durable Objects and Workers AI.
 

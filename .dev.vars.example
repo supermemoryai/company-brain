@@ -3,8 +3,9 @@
 # Get one at https://console.supermemory.ai
 SUPERMEMORY_API_KEY=""
 
-# One model API key: Anthropic, OpenAI, Google or xAI. Paste whichever you have;
-# the brain tells them apart by prefix. The prompts were tuned against Anthropic
+# One model API key: Anthropic, OpenAI, Google, xAI or OpenRouter. Paste whichever
+# you have; the brain tells them apart by prefix. An OpenRouter key (sk-or-)
+# reaches every provider's models. The prompts were tuned against Anthropic
 # and xAI models.
 MODEL_API_KEY=""
 
@@ -13,6 +14,7 @@ MODEL_API_KEY=""
 # OPENAI_API_KEY=""
 # GOOGLE_GENERATIVE_AI_API_KEY=""
 # XAI_API_KEY=""
+# OPENROUTER_API_KEY=""
 
 # ── Optional ──────────────────────────────────────────────────────────────────
 # Sandbox tools (shell, git, files). On Workers Paid, with the paid block in
