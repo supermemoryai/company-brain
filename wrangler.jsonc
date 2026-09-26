@@ -39,11 +39,6 @@
 	"version_metadata": {
 		"binding": "CF_VERSION_METADATA"
 	},
-	"worker_loaders": [
-		{
-			"binding": "LOADER"
-		}
-	],
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -84,16 +79,25 @@
 			]
 		}
 	],
-	// Sandbox tools (shell, git, files) run here. Containers need the Workers
-	// Paid plan.
-	"containers": [
-		{
-			"class_name": "Sandbox",
-			"image": "./sandbox/Dockerfile",
-			"instance_type": "basic",
-			"max_instances": 10
-		}
-	],
+	// ── Workers Paid ($5/mo) ─────────────────────────────────────────────────
+	// The brain runs on the free plan. On Workers Paid, uncomment this block to
+	// add a container sandbox (shell, git, Python) and Code Mode for connected
+	// tools. Without it, sandbox tools use Daytona when DAYTONA_API_KEY is set,
+	// and connected tools are called directly.
+	//
+	// "worker_loaders": [
+	// 	{
+	// 		"binding": "LOADER"
+	// 	}
+	// ],
+	// "containers": [
+	// 	{
+	// 		"class_name": "Sandbox",
+	// 		"image": "./sandbox/Dockerfile",
+	// 		"instance_type": "basic",
+	// 		"max_instances": 10
+	// 	}
+	// ],
 	"unsafe": {
 		"bindings": [
 			{

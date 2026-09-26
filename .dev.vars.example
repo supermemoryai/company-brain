@@ -1,5 +1,5 @@
 # ── Required ──────────────────────────────────────────────────────────────────
-# Your supermemory API key — this is where the brain reads and writes memory.
+# Your supermemory API key: this is where the brain reads and writes memory.
 # Get one at https://console.supermemory.ai
 SUPERMEMORY_API_KEY=""
 
@@ -15,7 +15,8 @@ MODEL_API_KEY=""
 # XAI_API_KEY=""
 
 # ── Optional ──────────────────────────────────────────────────────────────────
-# Sandbox tools (shell, git, files) run on Cloudflare Sandbox containers by
-# default; local dev needs Docker running. To use Daytona instead, uncomment
-# this and set it (or add it later with `wrangler secret put DAYTONA_API_KEY`).
+# Sandbox tools (shell, git, files). On Workers Paid, with the paid block in
+# wrangler.jsonc enabled, they run on a Cloudflare container (local dev then
+# needs Docker). On the free plan, or if you prefer it, set a Daytona key:
+# uncomment this, or add it later with `wrangler secret put DAYTONA_API_KEY`.
 # DAYTONA_API_KEY=""

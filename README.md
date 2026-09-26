@@ -103,7 +103,7 @@ TypeScript on Cloudflare Workers, Durable Objects and D1, with memory on [superm
 - `SUPERMEMORY_API_KEY`: where the brain keeps its memory. Get one at [console.supermemory.ai](https://console.supermemory.ai).
 - `MODEL_API_KEY`: an Anthropic, OpenAI, Google or xAI key, whichever you have. The brain works out the provider from the key. You pay the provider directly, no markup.
 
-Everything else is provisioned for you: D1, KV, Durable Objects, Workers AI, and the container the brain runs code in. Containers need the Workers Paid plan.
+Everything else is provisioned for you: D1, KV, Durable Objects and Workers AI.
 
 **2. Open `/setup`** on your new worker. It checks your keys, hands you a Slack app manifest with your URLs already filled in, and takes the Slack credentials back.
 
@@ -112,6 +112,18 @@ Everything else is provisioned for you: D1, KV, Durable Objects, Workers AI, and
 **4. Install to Slack**, and say hi. 👋
 
 Your team signs in with Slack at `/` to see the brain's home, a live graph of everything it remembers, and settings for tools, models, proactivity, automations and skills.
+
+### Free plan or Workers Paid?
+
+Company Brain runs on Cloudflare's free plan. [Workers Paid](https://developers.cloudflare.com/workers/platform/pricing/) ($5/mo) is better, and worth it if your team leans on the brain:
+
+| | Free | Workers Paid |
+|---|---|---|
+| **Long, multi-step answers** | Can get cut short: the free plan allows 50 outbound calls per request | Room for the brain's full tool loop |
+| **Code sandbox** (shell, git, Python) | With a [Daytona](https://daytona.io) key (`DAYTONA_API_KEY`) | Built in, on a Cloudflare container. Daytona still works if you prefer it. |
+| **Connected tools** | Called one at a time | Code Mode, which chains several calls in one step |
+
+To switch on the paid features, uncomment the **Workers Paid** block in `wrangler.jsonc` and redeploy.
 
 ---
 
@@ -123,7 +135,7 @@ cp .dev.vars.example .dev.vars   # fill in the two keys
 bun run dev
 ```
 
-Docker has to be running, since the sandbox is a container. Slack has to reach your machine, so point a tunnel at the dev server, set `PUBLIC_URL` in `.dev.vars` to the tunnel's URL, and create the Slack app from the tunnel's `/setup` page.
+If you've enabled the Workers Paid block, Docker has to be running for the sandbox container. Slack has to reach your machine, so point a tunnel at the dev server, set `PUBLIC_URL` in `.dev.vars` to the tunnel's URL, and create the Slack app from the tunnel's `/setup` page.
 
 After changing the schema in `src/db/schema`, run `bun run db:generate`. It writes the migration and bundles it into the worker, which applies it on its next request.
 

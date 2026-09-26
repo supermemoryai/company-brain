@@ -2,6 +2,8 @@ import { createCloudflareSandboxClient } from "./cloudflare-client"
 import { createDaytonaSandboxClient } from "./daytona-client"
 import { sandboxLimits } from "./guards"
 
+export { sandboxToolsConfigured } from "./availability"
+
 export type SandboxFileInfo = {
 	name: string
 	isDir: boolean
@@ -54,14 +56,6 @@ export type SandboxClient = {
 		content: ReadableStream<Uint8Array>
 	}>
 	isSandboxRunning(sandboxId: string): Promise<boolean>
-}
-
-/**
- * Cloudflare Sandbox runs in the deployer's own account and is the default.
- * Setting DAYTONA_API_KEY opts into Daytona instead.
- */
-export function sandboxToolsConfigured(env: Env): boolean {
-	return Boolean(env.DAYTONA_API_KEY) || Boolean(env.Sandbox)
 }
 
 export function createSandboxClient(env: Env): SandboxClient {

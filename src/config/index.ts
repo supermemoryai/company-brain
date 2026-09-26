@@ -1,6 +1,7 @@
 import * as Layer from "effect/Layer"
 import { getBrainModel } from "../brain/turn/brain-model"
 import { TRIAGE_MODEL } from "../brain/turn/model-profile"
+import { sandboxToolsConfigured } from "../brain/tools/sandbox/availability"
 import { VectorDBService } from "../compat/services/vectordb"
 import { memoryClient } from "../memory/client"
 
@@ -30,7 +31,7 @@ export function configureFromEnv(env: Env): void {
 	currentEnv = env
 	const publicUrl = env.PUBLIC_URL?.replace(/\/$/, "")
 	current = {
-		features: { email: false, sandbox: Boolean(env.DAYTONA_API_KEY || env.Sandbox) },
+		features: { email: false, sandbox: sandboxToolsConfigured(env) },
 		trustedOrigins: publicUrl ? [publicUrl] : [],
 		publicUrl,
 	}
