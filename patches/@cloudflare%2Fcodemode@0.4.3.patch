@@ -99,10 +99,45 @@ index 8a7f72aa147de3e991b06a68fdcda001082eeb21..c8b26173302717a14af932f75cdd43dc
    ): Promise<ToolDecision>;
    /**
 diff --git a/dist/index.js b/dist/index.js
-index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d74381029965 100644
+index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..b01388da5dcf01b95dea103a7fbd246bdc5ca3ab 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -678,6 +678,10 @@ var CodemodeRuntime = class extends DurableObject {
+@@ -237,6 +237,7 @@ var DynamicWorkerExecutor = class {
+ 			"__decodeCodemodeValue",
+ 			"__stringifyForCodemode",
+ 			"__parseForCodemode",
++			"__detachRpcResult",
+ 			"WorkerEntrypoint",
+ 			"CodeExecutor",
+ 			"Promise",
+@@ -280,7 +281,7 @@ var DynamicWorkerExecutor = class {
+ 		}
+ 		const proxyInits = providers.filter((p) => !connectorNames.has(p.name)).map((p) => `    const ${p.name} = new Proxy({}, {\n      get: (target, toolName) => {\n        if (Object.prototype.hasOwnProperty.call(target, toolName)) return target[toolName];\n        if (typeof toolName !== "string") return undefined;\n        return async (...args) => {\n          const resJson = await __dispatchers.${p.name}.call(String(toolName), __stringifyForCodemode(args));\n          const data = __parseForCodemode(resJson);\n          if (data.error) throw new Error(data.error);\n          return data.result;\n        };\n      }\n    });`);
+ 		const preludeInits = providers.filter((p) => !connectorNames.has(p.name) && p.prelude).map((p) => p.prelude);
+-		const connectorProxyInits = connectors.map((c) => `    const ${c.name} = new Proxy({}, {\n      get: (_, toolName) => {\n        if (typeof toolName !== "string") return undefined;\n        return async (...args) => {\n          const __r = await __connectors.${c.name}.callTool(toolName, args[0]);\n          if (__r && typeof __r === "object") {\n            if (__r.${CONNECTOR_CONTROL_KEY} === "pause") throw new Error("${PAUSE_SENTINEL_LITERAL}");\n            if (__r.${CONNECTOR_CONTROL_KEY} === "error") throw new Error(String(__r.message));\n          }\n          return __r;\n        };\n      }\n    });`);
++		const connectorProxyInits = connectors.map((c) => `    const ${c.name} = new Proxy({}, {\n      get: (_, toolName) => {\n        if (typeof toolName !== "string") return undefined;\n        return async (...args) => {\n          const __r = __detachRpcResult(await __connectors.${c.name}.callTool(toolName, args[0]));\n          if (__r && typeof __r === "object") {\n            if (__r.${CONNECTOR_CONTROL_KEY} === "pause") throw new Error("${PAUSE_SENTINEL_LITERAL}");\n            if (__r.${CONNECTOR_CONTROL_KEY} === "error") throw new Error(String(__r.message));\n          }\n          return __r;\n        };\n      }\n    });`);
+ 		const executorModule = [
+ 			"import { WorkerEntrypoint } from \"cloudflare:workers\";",
+ 			"",
+@@ -291,6 +292,17 @@ var DynamicWorkerExecutor = class {
+ 			"    console.warn = (...a) => { __logs.push(\"[warn] \" + a.map(String).join(\" \")); };",
+ 			"    console.error = (...a) => { __logs.push(\"[error] \" + a.map(String).join(\" \")); };",
+ 			SANDBOX_CODEC,
++			"    function __detachRpcResult(value) {",
++			"      if (!value || typeof value !== \"object\") return value;",
++			"      try {",
++			"        return __parseForCodemode(__stringifyForCodemode(value));",
++			"      } finally {",
++			"        const dispose = value[Symbol.dispose];",
++			"        if (typeof dispose === \"function\") {",
++			"          try { dispose.call(value); } catch {}",
++			"        }",
++			"      }",
++			"    }",
+ 			...proxyInits,
+ 			...connectorProxyInits,
+ 			...preludeInits,
+@@ -678,6 +690,10 @@ var CodemodeRuntime = class extends DurableObject {
  				seq
  			};
  		}
@@ -113,7 +148,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  		let storedArgs;
  		try {
  			storedArgs = toStored(`Arguments to ${connector}.${method}`, args);
-@@ -1492,6 +1496,16 @@ const STEP_PRELUDE = String.raw`
+@@ -1492,6 +1508,16 @@ const STEP_PRELUDE = String.raw`
        return value;
      };`;
  const CONTROL_KEY = "__codemode_control__";
@@ -130,9 +165,29 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  function createCursor() {
  	let n = 0;
  	return { next: () => n++ };
-@@ -1570,22 +1584,26 @@ function buildConnectorBindings(setup, runtime, executionId, cursor) {
+@@ -1565,31 +1591,48 @@ function validateConnectorNames(connectors) {
+ 		seen.add(name);
+ 	}
+ }
+-function buildConnectorBindings(setup, runtime, executionId, cursor) {
++function createInFlightTracker() {
++	const pending = /* @__PURE__ */ new Set();
++	return {
++		track(promise) {
++			pending.add(promise);
++			promise.then(() => pending.delete(promise), () => pending.delete(promise));
++			return promise;
++		},
++		async drain() {
++			while (pending.size > 0) await Promise.allSettled([...pending]);
++		}
++	};
++}
++function buildConnectorBindings(setup, runtime, executionId, cursor, inFlight) {
+ 	return setup.descriptions.map((desc) => ({
  		name: desc.name,
- 		binding: new ConnectorCallTarget(async (method, args) => {
+-		binding: new ConnectorCallTarget(async (method, args) => {
++		binding: new ConnectorCallTarget((method, args) => inFlight.track((async () => {
  			try {
 +				if (!Object.hasOwn(desc.descriptors, method)) throw new Error(`Unknown method: ${desc.name}.${method}. Use codemode.describe before calling a connector method.`);
  				const seq = cursor.next();
@@ -163,7 +218,12 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  					message: err instanceof Error ? err.message : String(err)
  				};
  			}
-@@ -1598,10 +1616,10 @@ function createPlatformProvider(setup, bindings, runtime, executor, executionId,
+-		})
++		})()))
+ 	}));
+ }
+ function createPlatformProvider(setup, bindings, runtime, executor, executionId, cursor) {
+@@ -1598,10 +1641,10 @@ function createPlatformProvider(setup, bindings, runtime, executor, executionId,
  		name: "codemode",
  		prelude: STEP_PRELUDE,
  		fns: {
@@ -177,7 +237,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  				if (!snippet) return { error: `Snippet "${args[0]}" not found.` };
  				const missing = missingConnectors(snippet.connectors, new Set(setup.connectorsByName.keys()));
  				if (missing.length > 0) return { error: `Snippet "${args[0]}" requires connector(s) ${missing.map((m) => `"${m}"`).join(", ")} that are not configured on this runtime.` };
-@@ -1612,7 +1630,7 @@ function createPlatformProvider(setup, bindings, runtime, executor, executionId,
+@@ -1612,9 +1655,9 @@ function createPlatformProvider(setup, bindings, runtime, executor, executionId,
  					connectors: bindings
  				})).result;
  			},
@@ -187,7 +247,25 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
 -				await runtime.recordResult(executionId, Number(seq), value);
 +				await rpcResult(runtime.recordResult(executionId, Number(seq), value));
  				return true;
-@@ -1683,14 +1701,14 @@ async function runPass(executionId, code, setup, runtime, executor, transformRes
+ 			}
+ 		}
+@@ -1661,12 +1704,14 @@ function buildDescription(connectors, customDescription, connectorHints) {
+ }
+ async function runPass(executionId, code, setup, runtime, executor, transformResult) {
+ 	const cursor = createCursor();
+-	const bindings = buildConnectorBindings(setup, runtime, executionId, cursor);
++	const inFlight = createInFlightTracker();
++	const bindings = buildConnectorBindings(setup, runtime, executionId, cursor, inFlight);
+ 	const platformProvider = createPlatformProvider(setup, bindings, runtime, executor, executionId, cursor);
+ 	const connectors = [...setup.connectorsByName.values()];
+ 	let ended = false;
+ 	const endPass = async (status) => {
+ 		ended = true;
++		await inFlight.drain();
+ 		await notifyPassEnd(connectors, executionId, status);
+ 		if (status !== "paused") await disposeConnectors(connectors, executionId, status);
+ 	};
+@@ -1683,14 +1728,14 @@ async function runPass(executionId, code, setup, runtime, executor, transformRes
  		} catch (err) {
  			threw = err;
  		}
@@ -204,7 +282,35 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  				calls
  			};
  		}
-@@ -1811,7 +1829,7 @@ function missingConnectors(required, available) {
+@@ -1791,11 +1836,23 @@ function runtimeFacetName(name = DEFAULT_RUNTIME_NAME) {
+ 	if (!/^[a-zA-Z0-9_.-]+$/.test(name)) throw new Error(`Invalid codemode runtime name "${name}" — use letters, digits, "_", "-" or "."`);
+ 	return `codemode:${name}`;
+ }
++// company-brain: facets need Dynamic Workers, which need Workers Paid. The
++// runtime only touches its own cm_* tables, so it runs on the host Durable
++// Object's storage instead, one instance per runtime name.
++const inProcessRuntimes = /* @__PURE__ */ new WeakMap();
+ function getRuntime(ctx, name) {
+-	const facetCtx = ctx;
+-	const runtimeClass = facetCtx.exports?.CodemodeRuntime;
+-	if (!runtimeClass) throw new Error("CodemodeRuntime is not exported from this Worker entry. Add the @cloudflare/codemode/vite plugin to your Vite config, or manually export { CodemodeRuntime } from \"@cloudflare/codemode\".");
+-	return facetCtx.facets.get(runtimeFacetName(name), () => ({ class: runtimeClass }));
++	const key = runtimeFacetName(name);
++	let runtimes = inProcessRuntimes.get(ctx);
++	if (!runtimes) {
++		runtimes = /* @__PURE__ */ new Map();
++		inProcessRuntimes.set(ctx, runtimes);
++	}
++	let runtime = runtimes.get(key);
++	if (!runtime) {
++		runtime = new CodemodeRuntime(ctx, {});
++		runtimes.set(key, runtime);
++	}
++	return runtime;
+ }
+ /** Internal: the runtime handle uses this to reach the facet. Not public API. */
+ const getCodemodeRuntime = getRuntime;
+@@ -1811,7 +1868,7 @@ function missingConnectors(required, available) {
  async function resumeCodemode(options) {
  	const runtime = getRuntime(options.ctx, options.name);
  	const setup = await loadSetup(options.connectors);
@@ -213,7 +319,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  	if (existing) {
  		const missing = missingConnectors(existing.connectors, new Set(setup.connectorsByName.keys()));
  		if (missing.length > 0) return {
-@@ -1820,7 +1838,7 @@ async function resumeCodemode(options) {
+@@ -1820,7 +1877,7 @@ async function resumeCodemode(options) {
  			error: `Execution "${options.executionId}" requires connector(s) ${missing.map((m) => `"${m}"`).join(", ")} that are not configured on this runtime.`
  		};
  	}
@@ -222,7 +328,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  	if (!execution) {
  		const error = existing ? `Execution "${options.executionId}" is not paused (status: ${existing.status}); only a paused run can be approved.` : `No execution "${options.executionId}" to resume.`;
  		return {
-@@ -1844,7 +1862,7 @@ async function rejectCodemode(options) {
+@@ -1844,7 +1901,7 @@ async function rejectCodemode(options) {
  	return terminated;
  }
  async function pendingCodemode(options) {
@@ -231,7 +337,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  }
  /**
  * Expire paused (awaiting-approval) executions idle past `maxAgeMs`, marking
-@@ -1855,14 +1873,14 @@ async function pendingCodemode(options) {
+@@ -1855,14 +1912,14 @@ async function pendingCodemode(options) {
  * Designed to be called from a recurring alarm/scheduled task.
  */
  async function expireCodemode(options) {
@@ -248,7 +354,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  	let reverted = 0;
  	const failures = [];
  	for (const action of actions) {
-@@ -1950,11 +1968,11 @@ var DefaultCodemodeRuntimeHandle = class {
+@@ -1950,11 +2007,11 @@ var DefaultCodemodeRuntimeHandle = class {
  		});
  	}
  	executions(limit) {
@@ -262,7 +368,7 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  		const deleted = await runtime.deleteExecution(id);
  		if (deleted && (state?.status === "paused" || state?.status === "running")) await disposeConnectors(this.#options.connectors, id, "rejected");
  		return deleted;
-@@ -1963,10 +1981,10 @@ var DefaultCodemodeRuntimeHandle = class {
+@@ -1963,10 +2020,10 @@ var DefaultCodemodeRuntimeHandle = class {
  		return this.#runtime().pruneExecutions(keep);
  	}
  	saveSnippet(name, options) {
@@ -275,54 +381,3 @@ index c7b42eaf4f1b76977c314ad5b723a786b97ca10b..6042eeca8ec7c5bee9a7851fc462d743
  	}
  	deleteSnippet(name) {
  		return this.#runtime().deleteSnippet(name);
-diff --git a/dist/index.js b/dist/index.js
---- a/dist/index.js
-+++ b/dist/index.js
-@@ -1582 +1582,14 @@
--function buildConnectorBindings(setup, runtime, executionId, cursor) {
-+function createInFlightTracker() {
-+	const pending = /* @__PURE__ */ new Set();
-+	return {
-+		track(promise) {
-+			pending.add(promise);
-+			promise.then(() => pending.delete(promise), () => pending.delete(promise));
-+			return promise;
-+		},
-+		async drain() {
-+			while (pending.size > 0) await Promise.allSettled([...pending]);
-+		}
-+	};
-+}
-+function buildConnectorBindings(setup, runtime, executionId, cursor, inFlight) {
-@@ -1585 +1598 @@
--		binding: new ConnectorCallTarget(async (method, args) => {
-+		binding: new ConnectorCallTarget((method, args) => inFlight.track((async () => {
-@@ -1610 +1623 @@
--		})
-+		})()))
-@@ -1682 +1695,2 @@
--	const bindings = buildConnectorBindings(setup, runtime, executionId, cursor);
-+	const inFlight = createInFlightTracker();
-+	const bindings = buildConnectorBindings(setup, runtime, executionId, cursor, inFlight);
-@@ -1687,0 +1702 @@
-+		await inFlight.drain();
-diff --git a/dist/index.js b/dist/index.js
---- a/dist/index.js
-+++ b/dist/index.js
-@@ -239,0 +240 @@ var DynamicWorkerExecutor = class {
-+			"__detachRpcResult",
-@@ -283 +284 @@ var DynamicWorkerExecutor = class {
--		const connectorProxyInits = connectors.map((c) => `    const ${c.name} = new Proxy({}, {\n      get: (_, toolName) => {\n        if (typeof toolName !== "string") return undefined;\n        return async (...args) => {\n          const __r = await __connectors.${c.name}.callTool(toolName, args[0]);\n          if (__r && typeof __r === "object") {\n            if (__r.${CONNECTOR_CONTROL_KEY} === "pause") throw new Error("${PAUSE_SENTINEL_LITERAL}");\n            if (__r.${CONNECTOR_CONTROL_KEY} === "error") throw new Error(String(__r.message));\n          }\n          return __r;\n        };\n      }\n    });`);
-+		const connectorProxyInits = connectors.map((c) => `    const ${c.name} = new Proxy({}, {\n      get: (_, toolName) => {\n        if (typeof toolName !== "string") return undefined;\n        return async (...args) => {\n          const __r = __detachRpcResult(await __connectors.${c.name}.callTool(toolName, args[0]));\n          if (__r && typeof __r === "object") {\n            if (__r.${CONNECTOR_CONTROL_KEY} === "pause") throw new Error("${PAUSE_SENTINEL_LITERAL}");\n            if (__r.${CONNECTOR_CONTROL_KEY} === "error") throw new Error(String(__r.message));\n          }\n          return __r;\n        };\n      }\n    });`);
-@@ -293,0 +295,11 @@ var DynamicWorkerExecutor = class {
-+			"    function __detachRpcResult(value) {",
-+			"      if (!value || typeof value !== \"object\") return value;",
-+			"      try {",
-+			"        return __parseForCodemode(__stringifyForCodemode(value));",
-+			"      } finally {",
-+			"        const dispose = value[Symbol.dispose];",
-+			"        if (typeof dispose === \"function\") {",
-+			"          try { dispose.call(value); } catch {}",
-+			"        }",
-+			"      }",
-+			"    }",

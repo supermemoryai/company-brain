@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import { sandboxToolsConfigured } from "./availability"
 
 const sandbox = {} as Env["Sandbox"]
-const loader = {} as Env["LOADER"]
 
 describe("sandboxToolsConfigured", () => {
 	it("stays off on the free plan without Daytona", () => {
@@ -13,9 +12,12 @@ describe("sandboxToolsConfigured", () => {
 			sandboxToolsConfigured({ Sandbox: sandbox, DAYTONA_API_KEY: "k" } as Env),
 		).toBe(true)
 	})
-	it("uses the container once the paid block is enabled", () => {
+	it("uses the container once it's switched on", () => {
 		expect(
-			sandboxToolsConfigured({ Sandbox: sandbox, LOADER: loader } as Env),
+			sandboxToolsConfigured({ Sandbox: sandbox, CONTAINER_SANDBOX: "on" } as Env),
 		).toBe(true)
+		expect(
+			sandboxToolsConfigured({ Sandbox: sandbox, CONTAINER_SANDBOX: "off" } as Env),
+		).toBe(false)
 	})
 })

@@ -27,6 +27,9 @@
 		]
 	},
 	"vars": {
+		// "on" once the Workers Paid block below is enabled: sandbox tools then
+		// run on a Cloudflare container.
+		"CONTAINER_SANDBOX": "off",
 		// The sandbox SDK's RPC transport; artifact downloads stream over it.
 		"SANDBOX_TRANSPORT": "rpc"
 	},
@@ -80,16 +83,11 @@
 		}
 	],
 	// ── Workers Paid ($5/mo) ─────────────────────────────────────────────────
-	// The brain runs on the free plan. On Workers Paid, uncomment this block to
-	// add a container sandbox (shell, git, Python) and Code Mode for connected
-	// tools. Without it, sandbox tools use Daytona when DAYTONA_API_KEY is set,
-	// and connected tools are called directly.
+	// The brain runs on the free plan. On Workers Paid, uncomment this block
+	// and set CONTAINER_SANDBOX to "on" above to give it a built-in container
+	// sandbox (shell, git, Python). Without it, sandbox tools use Daytona when
+	// DAYTONA_API_KEY is set.
 	//
-	// "worker_loaders": [
-	// 	{
-	// 		"binding": "LOADER"
-	// 	}
-	// ],
 	// "containers": [
 	// 	{
 	// 		"class_name": "Sandbox",

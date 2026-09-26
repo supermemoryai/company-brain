@@ -9,7 +9,6 @@ import { setupRoutes } from "./setup/routes"
 import { hydrateSecrets, rememberPublicUrl } from "./setup/secrets"
 import type { AppContext } from "./types"
 
-export { CodemodeRuntime } from "@cloudflare/codemode"
 export { Sandbox } from "@cloudflare/sandbox"
 export { CompanyBrainAgent } from "./brain/turn/agent"
 
@@ -45,7 +44,6 @@ app.route("/brain", brainRoutes)
 app.route("/slack", slackRoutes)
 
 app.get("/health", (c) => c.json({ ok: true }))
-
 
 // Everything else is the app UI; the asset handler serves index.html for
 // client-side routes, so only paths above ever reach this worker.

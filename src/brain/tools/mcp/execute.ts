@@ -1,13 +1,14 @@
 import {
 	type CodemodeRuntimeHandle,
 	createCodemodeRuntime,
-	DynamicWorkerExecutor,
 	type ProxyToolOutput,
 	type ToolLogEntry,
 } from "@cloudflare/codemode"
 import { parse } from "acorn"
 import type { ToolSet } from "ai"
 import type { BrainCostLedger } from "../../billing/cost"
+import { QuickJSExecutor } from "../../codemode/quickjs-executor"
+import { loadQuickJS } from "../../codemode/quickjs-module"
 import type { LeaseRuntimeContext } from "../../lease/types"
 import type { TurnActor } from "../../turn/actor"
 import { brainAgent, type CompanyBrainAgent } from "../../turn/agent"
@@ -295,23 +296,11 @@ export function connectedAppRuntimeAvailable(
 	traceId?: string,
 ): boolean {
 	const logPrefix = traceId ? `[company-brain][${traceId}]` : "[company-brain]"
-	if (!env.LOADER) {
-		console.warn(
-			`${logPrefix} connected-app Code Mode disabled reason=worker_loader_missing`,
-		)
-		return false
-	}
+	// Code runs in QuickJS and the runtime's state lives in this Durable
+	// Object's own storage (see the codemode patch), so all it needs is the DO.
 	try {
-		const ctx = brainContext(agent) as DurableObjectState & {
-			exports?: { CodemodeRuntime?: unknown }
-		}
-		const available = Boolean(ctx.exports?.CodemodeRuntime)
-		if (!available) {
-			console.warn(
-				`${logPrefix} connected-app Code Mode disabled reason=codemode_runtime_export_missing`,
-			)
-		}
-		return available
+		brainContext(agent)
+		return true
 	} catch {
 		console.warn(
 			`${logPrefix} connected-app Code Mode disabled reason=durable_object_context_unavailable`,
@@ -329,10 +318,9 @@ function buildRuntime(args: {
 		ctx: brainContext(args.agent),
 		name: CONNECTED_APP_RUNTIME_NAME,
 		connectors: args.connectors,
-		executor: new DynamicWorkerExecutor({
-			loader: args.env.LOADER as WorkerLoader,
-			timeout: CODE_MODE_LIMITS.timeoutMs,
-			globalOutbound: null,
+		executor: new QuickJSExecutor({
+			loadModule: loadQuickJS,
+			timeoutMs: CODE_MODE_LIMITS.timeoutMs,
 		}),
 		maxExecutions: CODE_MODE_LIMITS.retainedExecutions,
 		transformResult: (result) =>

@@ -38,7 +38,6 @@ export const setupRoutes = new Hono<AppContext>()
 					c.env.MODEL_API_KEY?.trim() &&
 						!providerForModelKey(c.env.MODEL_API_KEY.trim()),
 				),
-				paidFeatures: Boolean(c.env.LOADER),
 				sandbox: sandboxBackend(c.env),
 				providers,
 				slackConfigured: Boolean(slack),
