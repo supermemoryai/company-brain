@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { db } from "@repo/db"
 import { organization } from "@repo/db/schema/auth"
+import { slackWorkspace } from "@repo/db/schema/slack"
 import { ROLE_ADMIN, roleAtLeast } from "@repo/lib/permissions"
 import { applyMigrations, migrationStatus } from "../db/migrate"
 import { availableProviders } from "@/lib/brain/turn/brain-model"
@@ -25,6 +26,13 @@ export const setupRoutes = new Hono<AppContext>()
 		const slack = databaseReady
 			? await slackCredentials(c.env).catch(() => null)
 			: null
+		const [installed] = databaseReady
+			? await db(c.env)
+					.select({ teamName: slackWorkspace.teamName })
+					.from(slackWorkspace)
+					.limit(1)
+					.catch(() => [])
+			: []
 		return c.html(
 			setupPage({
 				origin,
@@ -42,6 +50,7 @@ export const setupRoutes = new Hono<AppContext>()
 				providers,
 				slackConfigured: Boolean(slack),
 				signedIn: Boolean(c.get("user")),
+				installedTeam: installed ? (installed.teamName ?? "your workspace") : null,
 				manifest: slackAppManifest(origin, "company-brain"),
 			}),
 		)
@@ -83,5 +92,5 @@ export const setupRoutes = new Hono<AppContext>()
 			clientSecret,
 			signingSecret,
 		})
-		return c.redirect("/setup")
+		return c.redirect("/setup#step-signin")
 	})

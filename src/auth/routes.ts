@@ -72,10 +72,27 @@ async function deploymentOrg(env: Env) {
  * organization and owns it, and everyone after must come from that workspace.
  */
 export const authRoutes = new Hono<AppContext>()
-	.get("/session", (c) => {
+	.get("/session", async (c) => {
 		const currentUser = c.get("user")
 		const org = c.get("org")
-		if (!currentUser || !org) return c.json({ user: null, org: null, role: null })
+		if (!currentUser || !org) {
+			// Signed out on a deployment that isn't set up yet: the app sends
+			// people to /setup instead of a sign-in button that can't work.
+			const [credentials, installed] = await Promise.all([
+				slackCredentials(c.env).catch(() => null),
+				db(c.env)
+					.select({ teamId: slackWorkspace.teamId })
+					.from(slackWorkspace)
+					.limit(1)
+					.catch(() => []),
+			])
+			return c.json({
+				user: null,
+				org: null,
+				role: null,
+				setupComplete: Boolean(credentials) && installed.length > 0,
+			})
+		}
 		return c.json({
 			user: {
 				id: currentUser.id,
@@ -209,7 +226,14 @@ export const authRoutes = new Hono<AppContext>()
 			.onConflictDoNothing({ target: [member.organizationId, member.userId] })
 
 		await startSession(c, userId, claimed.org.id)
-		return c.redirect("/")
+		// A fresh deployment still needs the bot installed, which /setup walks
+		// through; after that, sign-in lands in the app.
+		const [installed] = await db(c.env)
+			.select({ teamId: slackWorkspace.teamId })
+			.from(slackWorkspace)
+			.where(eq(slackWorkspace.orgId, claimed.org.id))
+			.limit(1)
+		return c.redirect(installed ? "/" : "/setup")
 	})
 	.post("/logout", (c) => {
 		endSession(c)

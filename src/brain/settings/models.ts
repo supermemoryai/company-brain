@@ -1,6 +1,6 @@
 import { db, eq, sql, withTransaction } from "@repo/db"
 import * as schema from "@repo/db/schema"
-import { orgMetadataAsJsonb } from "@/lib/org-metadata-sql"
+import { orgMetadataObject } from "@/lib/org-metadata-sql"
 import { isRecord } from "../turn/util"
 
 const BRAIN_MODEL_KEYS = [
@@ -38,11 +38,11 @@ export async function updateBrainModels(
 			else merged[key] = value
 		}
 
-		// jsonb_set only the brainModels subtree so other keys aren't clobbered.
+		// Replace only the brainModels subtree so other keys aren't clobbered.
 		await tx
 			.update(schema.organization)
 			.set({
-				metadata: sql`jsonb_set(${orgMetadataAsJsonb()}, '{brainModels}', ${JSON.stringify(merged)}::jsonb, true)::json`,
+				metadata: sql`json_set(${orgMetadataObject()}, '$.brainModels', json(${JSON.stringify(merged)}))`,
 			})
 			.where(eq(schema.organization.id, orgId))
 		return merged
