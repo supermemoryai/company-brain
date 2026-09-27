@@ -479,11 +479,7 @@ function leaseModeSatisfies(
 	existing: LeaseMode,
 	requested: LeaseMode,
 ): boolean {
-	return (
-		existing === requested ||
-		existing === "read_write" ||
-		requested === "read_write"
-	)
+	return existing === requested || existing === "read_write"
 }
 
 export function hasOpenLeaseForServer(
