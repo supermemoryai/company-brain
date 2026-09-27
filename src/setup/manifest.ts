@@ -77,6 +77,8 @@ export function slackAppManifest(origin: string, appName = SLACK_APP_NAME) {
 					"message.channels",
 					"message.groups",
 					"message.im",
+					"member_joined_channel",
+					"member_left_channel",
 					"reaction_added",
 					"reaction_removed",
 					"team_join",
