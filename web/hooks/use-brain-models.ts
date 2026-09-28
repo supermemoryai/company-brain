@@ -12,9 +12,31 @@ export type BrainReasoningKey = "mainEffort" | "triageEffort"
 export type BrainModelConfig = Record<BrainModelRole, string> &
 	Partial<Record<BrainReasoningKey, BrainReasoningEffort>>
 
+/** One option in the OrcaRouter model dropdown, straight from its catalog. */
+export type OrcaModelOption = {
+	id: string
+	name: string
+	contextLength?: number
+}
+
+export type OrcaCatalogSection = {
+	/** True when the list is the verified seed or a cached list, not live. */
+	degraded: boolean
+	degradedReason?: string
+	source: "live" | "seed"
+	options: OrcaModelOption[]
+}
+
 export type BrainModelsResponse = {
 	resolved: BrainModelConfig
 	defaults: BrainModelConfig
+	/** Which OpenAI-compatible router will carry unkeyed models, if any. */
+	router: "orcarouter" | "openrouter" | null
+	/**
+	 * Present when OrcaRouter is the router in play: the capability-filtered
+	 * catalog per surface. Options are what the surface can actually use.
+	 */
+	orca: Record<BrainModelRole, OrcaCatalogSection> | null
 	choices: Record<BrainModelRole, string[]> &
 		Partial<Record<BrainReasoningKey, BrainReasoningEffort[]>>
 }

@@ -4,3 +4,10 @@ dist/
 .wrangler/
 .DS_Store
 dist-brain/
+
+__pycache__/
+
+# GUI evidence is produced per run by scripts/orca-evidence/capture.py, never
+# committed: the deep-integration check rejects a patch that ships it. Anchored
+# so the generator scripts under scripts/orca-evidence/ stay tracked.
+/orca-evidence/

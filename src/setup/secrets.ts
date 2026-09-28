@@ -19,14 +19,39 @@ export async function encryptionSecret(env: Env): Promise<string> {
 
 const PUBLIC_URL_KV_KEY = "deployment:public-url"
 
+/**
+ * Pull a stored OrcaRouter credential — pasted key or a PKCE-minted one — into
+ * the environment, so both the HTTP worker and the Durable Object see it as
+ * `ORCA_API_KEY`. An explicit Workers secret always wins, and a credential the
+ * user revoked is not hydrated: it has to be reconnected first.
+ */
+async function hydrateOrcaCredential(env: Env): Promise<void> {
+	if (env.ORCA_API_KEY?.trim()) return
+	try {
+		const { createOrcaCredentialStore } = await import(
+			"@/lib/brain/turn/orcarouter-store"
+		)
+		const read = await createOrcaCredentialStore(env).read()
+		if (read.status === "ok") env.ORCA_API_KEY = read.credential.key
+	} catch (error) {
+		console.warn(
+			"[setup] could not read the stored OrcaRouter credential:",
+			error instanceof Error ? error.message : "unknown error",
+		)
+	}
+}
+
 // Whether PUBLIC_URL came from the deployment's own vars, recorded before
 // hydration fills it in from KV. A configured value always wins.
 const configuredPublicUrl = new WeakMap<object, boolean>()
 
 export function providerForModelKey(
 	key: string,
-): "anthropic" | "openai" | "google" | "xai" | "openrouter" | null {
+): "anthropic" | "openai" | "google" | "xai" | "openrouter" | "orcarouter" | null {
 	if (key.startsWith("sk-ant-")) return "anthropic"
+	// Checked before the bare `sk-` rule: an OrcaRouter key must not be read as
+	// an OpenAI key.
+	if (key.startsWith("sk-orca-")) return "orcarouter"
 	if (key.startsWith("sk-or-")) return "openrouter"
 	if (key.startsWith("xai-")) return "xai"
 	if (key.startsWith("AIza")) return "google"
@@ -53,15 +78,19 @@ function applyModelApiKey(env: Env): void {
 		case "openrouter":
 			env.OPENROUTER_API_KEY ||= key
 			return
+		case "orcarouter":
+			env.ORCA_API_KEY ||= key
+			return
 		default:
 			console.warn(
-				"[setup] MODEL_API_KEY doesn't look like an Anthropic, OpenAI, Google, xAI or OpenRouter key; set the provider's own variable instead.",
+				"[setup] MODEL_API_KEY doesn't look like an Anthropic, OpenAI, Google, xAI, OpenRouter or OrcaRouter key; set the provider's own variable instead.",
 			)
 	}
 }
 
 export async function hydrateSecrets(env: Env): Promise<void> {
 	applyModelApiKey(env)
+	await hydrateOrcaCredential(env)
 	if (!env.ENCRYPTION_SECRET?.trim()) {
 		env.ENCRYPTION_SECRET = await encryptionSecret(env)
 	}

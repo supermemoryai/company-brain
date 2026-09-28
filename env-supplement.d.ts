@@ -19,6 +19,18 @@ interface Env {
 	SLACK_SIGNING_SECRET?: string
 	/** Generated at first boot and kept in KV; encrypts tokens at rest. */
 	ENCRYPTION_SECRET: string
+	/**
+	 * OrcaRouter. Either set one directly, or let the setup wizard store a
+	 * pasted key / one minted by the OAuth 2.0 + PKCE connect flow — both are
+	 * hydrated into this variable.
+	 */
+	ORCA_API_KEY?: string
+	/** Shared self-hosted origin for auth and inference. */
+	ORCA_BASE_URL?: string
+	/** Auth origin override (consent screen + code exchange). */
+	ORCA_AUTH_BASE_URL?: string
+	/** Inference origin override; includes the `/v1` relay prefix. */
+	ORCA_API_BASE_URL?: string
 }
 
 /** Optional Cloudflare AI Gateway. When set, model calls route through it. */
