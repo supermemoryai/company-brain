@@ -2,7 +2,7 @@ import { generateId } from "@repo/lib/generate-id"
 import type { Schedule } from "agents"
 import { decryptToken } from "@/lib/crypto"
 import { orgCanRunCompanyBrain } from "@/lib/payments/company-brain-entitlement"
-import type { SlackMemoryScope } from "../memory"
+import type { MemoryScope } from "../memory"
 import {
 	type BrainObservabilityInput,
 	flushBrainTelemetry,
@@ -33,7 +33,7 @@ export type ScheduledTaskPayload = {
 	creatorUserId?: string
 	creatorSlackUserId?: string
 	deliverTo?: "origin" | "dm" | "channel"
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 	relatedSlackUserIds?: string[]
 	scheduledWhen?: ScheduleWhen
 	kind?: "reminder" | "digest"
@@ -388,7 +388,7 @@ async function runScheduledTaskInner(
 	// DM digests post to the owner's DM, so scope reads to that DM surface;
 	// otherwise the run resolves as a public channel and search_slack_channels
 	// rejects the owner's private-channel reads. Channel digests keep their scope.
-	const memoryScope: SlackMemoryScope | undefined =
+	const memoryScope: MemoryScope | undefined =
 		dm && payload.creatorSlackUserId
 			? { kind: "dm", channelId: target, userId: payload.creatorSlackUserId }
 			: payload.memoryScope

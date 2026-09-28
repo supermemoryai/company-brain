@@ -11,7 +11,7 @@ import { maybeSyncBrainProfileConfig } from "../memory/profile-sync"
 import {
 	type MemoryWriteback,
 	memoryDocsFromWriteback,
-	type SlackMemoryScope,
+	type MemoryScope,
 } from "../memory/writeback"
 import type { BrainObservabilityInput } from "../observability"
 import {
@@ -225,7 +225,7 @@ function slackMemoryScopeForTurn(args: {
 	userId?: string
 	slackUserId?: string
 	conversationInfo?: SlackConversationInfo
-}): SlackMemoryScope {
+}): MemoryScope {
 	const { isDM, channel, channelType, userId, slackUserId, conversationInfo } =
 		args
 	const base = {
@@ -255,7 +255,7 @@ function slackMemoryScopeForTurn(args: {
 }
 
 function slackMemoryWriterUserId(
-	scope: SlackMemoryScope | undefined,
+	scope: MemoryScope | undefined,
 	fallbackUserId: string | undefined,
 ): string | undefined {
 	if (scope?.kind === "dm" || scope?.kind === "private_channel") {

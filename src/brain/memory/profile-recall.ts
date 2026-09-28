@@ -11,7 +11,7 @@ import {
 	relevantBrainTagKeys,
 } from "./tags"
 import { outlineBrainTree, renderBrainTreeOutline } from "./tree"
-import type { SlackMemoryScope } from "./writeback"
+import type { MemoryScope } from "./writeback"
 
 const FLOOR_TOKEN_BUDGET = 20_000
 const FLOOR_TAG_KEYS = 10
@@ -42,7 +42,7 @@ export type BrainProfileRecallInput = {
 	/** Other people relevant to the message, usually Slack @mentions. */
 	mentionedSlackUserIds?: string[]
 	/** Turn scope. DMs read shared + personal + every private channel the asker is in. */
-	scope?: SlackMemoryScope
+	scope?: MemoryScope
 	/** Explicit read surface (admin console); replaces whatever scope would imply. */
 	containerTags?: string[]
 }

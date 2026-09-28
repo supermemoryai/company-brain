@@ -1,6 +1,6 @@
 import type { ToolSet } from "ai"
 import { parseCronExpression } from "cron-schedule"
-import type { SlackMemoryScope } from "../memory"
+import type { MemoryScope } from "../memory"
 import { logPreview } from "../observability/log-utils"
 import {
 	checkAskerCanSearchChannel,
@@ -112,7 +112,7 @@ export type SchedulerToolContext = {
 	creatorUserId?: string
 	creatorSlackUserId?: string
 	isDirectMessage?: boolean
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 	isOrgMember?: boolean
 	askerIsRestricted?: boolean
 	requestText?: string
@@ -125,7 +125,7 @@ export type SchedulerDestination = {
 	channel: string
 	channelName?: string
 	threadTs?: string
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 }
 
 type SchedulerDestinationResult =

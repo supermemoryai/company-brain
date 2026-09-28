@@ -3,7 +3,7 @@ import { buildBrainProfileContext } from "../memory/profile-recall"
 import { resolveBrainReadContainerTags } from "../memory/read-scope"
 import { BRAIN_MEMORY_TAG_KINDS, listBrainMemoryTags } from "../memory/tags"
 import { fetchSubtreeBrainMemories, outlineBrainTree } from "../memory/tree"
-import type { SlackMemoryScope } from "../memory/writeback"
+import type { MemoryScope } from "../memory/writeback"
 import { logPreview } from "../observability/log-utils"
 import { formatThreadHistoryEntries } from "../prompt/build"
 import type { SlackLookupContext } from "../slack/channel-lookup"
@@ -45,7 +45,7 @@ export function createContextDiscoveryTools(args: {
 	includePeopleDirectory?: boolean
 	askerSlackUserId?: string
 	mentionedSlackUserIds?: string[]
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 	/** Explicit read surface (admin console); replaces what memoryScope implies. */
 	memoryContainerTags?: string[]
 	traceId: string

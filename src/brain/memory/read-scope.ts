@@ -1,7 +1,7 @@
 import { SHARED_TEAM_BRAIN_CONTAINER_TAG } from "@/lib/spaces/provisioning"
 import { readableSlackChannelContainerTagsForUser } from "../slack/channel-membership"
 import type { CompanyBrainAgent } from "../turn/agent"
-import { type SlackMemoryScope, slackMemoryContainerTag } from "./writeback"
+import { type MemoryScope, slackMemoryContainerTag } from "./writeback"
 
 // The container tags a turn may READ from — always a superset of the single
 // write tag (slackMemoryContainerTag). Shared Team Brain + the current scope's
@@ -11,7 +11,7 @@ import { type SlackMemoryScope, slackMemoryContainerTag } from "./writeback"
 // only ever read shared + their own tag.
 export function resolveBrainReadContainerTags(
 	agent: CompanyBrainAgent,
-	scope: SlackMemoryScope | undefined,
+	scope: MemoryScope | undefined,
 	/** Explicit surface from the admin console; replaces the derived set entirely. */
 	override?: string[],
 ): string[] {
