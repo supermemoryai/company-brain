@@ -15,7 +15,7 @@ import { brainFallbackModelFor } from "./model-profile"
 // Sentinel the gateway swaps for its stored provider key (BYOK).
 const GATEWAY_INJECTED_KEY = "CF_TEMP_TOKEN"
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+import { openRouterBaseUrl } from "./openrouter-base-url"
 
 const OPENROUTER_VENDOR: Record<SupportedModelProvider, string> = {
 	anthropic: "anthropic",
@@ -71,11 +71,11 @@ export function openRouterModelId(modelName: SupportedModel): string {
 	return `${OPENROUTER_VENDOR[provider]}/${canonicalName ?? modelName}`
 }
 
-function openRouterModel(modelName: SupportedModel, apiKey: string) {
+function openRouterModel(modelName: SupportedModel, apiKey: string, env: Env) {
 	return createOpenAI({
 		name: "openrouter",
 		apiKey,
-		baseURL: OPENROUTER_BASE_URL,
+		baseURL: openRouterBaseUrl(env),
 		headers: { "X-Title": "Company Brain" },
 	}).chat(openRouterModelId(modelName))
 }
@@ -114,7 +114,7 @@ export function brainProviderModel(
 	const directKey = providerKey(provider, env)?.trim()
 	const routerKey = openRouterKey(env)
 	if (apiKeyOverride === undefined && !directKey && routerKey) {
-		return openRouterModel(modelName, routerKey)
+		return openRouterModel(modelName, routerKey, env)
 	}
 	const apiKey = apiKeyOverride ?? providerKey(provider, env) ?? ""
 	switch (provider) {

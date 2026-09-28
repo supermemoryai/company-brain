@@ -15,6 +15,11 @@ MODEL_API_KEY=""
 # GOOGLE_GENERATIVE_AI_API_KEY=""
 # XAI_API_KEY=""
 # OPENROUTER_API_KEY=""
+# OPENROUTER_BASE_URL=""
+# Optional: point the OpenRouter-compatible path at another OpenAI-compatible
+# router instead of openrouter.ai — e.g. FreeRouter:
+# OPENROUTER_BASE_URL="https://api.freerouter.com/v1"
+# with OPENROUTER_API_KEY set to your router key. Model ids stay vendor/model.
 
 # ── Optional ──────────────────────────────────────────────────────────────────
 # Sandbox tools (shell, git, files). On Workers Paid, with the paid block in
