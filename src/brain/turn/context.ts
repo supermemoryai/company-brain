@@ -512,12 +512,87 @@ function discoveryResultIsActive(
 	)
 }
 
+export type BoundaryHeadTarget = {
+	key: string
+	toolName: string
+	serialized: string
+	cap: number
+}
+
+type BoundaryOptions = {
+	activeDiscoveryApps?: Iterable<string>
+	preserveLoadedSkills?: boolean
+	/** Query-kept text for a target key, used instead of a prefix slice. */
+	headOverrides?: ReadonlyMap<string, string>
+}
+
+function boundaryKey(result: ToolResultRef): string {
+	return `${result.messageIndex}:${result.partIndex}`
+}
+
+/**
+ * Tool results this boundary would replace with a prefix. Recent results only
+ * qualify once they pass the 16k cap. Older results qualify once they pass
+ * the 400-character head. The caller compresses at most one of these.
+ */
+export function listBoundaryHeadTargets(
+	messages: ModelMessage[],
+	options: BoundaryOptions = {},
+): BoundaryHeadTarget[] {
+	const withoutState = messages.filter(
+		(message) => !isTurnStateMessage(message),
+	)
+	const inputs = collectToolInputs(withoutState)
+	const results = collectToolResults(withoutState)
+	const recent = new Set(results.slice(-RECENT_TOOL_RESULTS))
+	const activeDiscoveryApps = new Set(options.activeDiscoveryApps ?? [])
+	const targets: BoundaryHeadTarget[] = []
+	for (const result of results) {
+		if (compactedValue(result.value)) continue
+		if (result.toolName === "load_skill") continue
+		const serialized = outputText(result.output)
+		if (discoveryResultIsActive(result, inputs, activeDiscoveryApps)) continue
+		const cap = recent.has(result)
+			? RECENT_TOOL_RESULT_CHAR_LIMIT
+			: COMPACTED_RESULT_HEAD_CHARS
+		if (serialized.length <= cap) continue
+		targets.push({
+			key: boundaryKey(result),
+			toolName: result.toolName,
+			serialized,
+			cap,
+		})
+	}
+	return targets
+}
+
+export function largestBoundaryHeadTarget(
+	messages: ModelMessage[],
+	options: BoundaryOptions = {},
+): BoundaryHeadTarget | null {
+	let best: BoundaryHeadTarget | null = null
+	for (const target of listBoundaryHeadTargets(messages, options)) {
+		if (!best || target.serialized.length > best.serialized.length) best = target
+	}
+	return best
+}
+
+function keptHead(
+	key: string,
+	serialized: string,
+	cap: number,
+	overrides?: ReadonlyMap<string, string>,
+): { head: string; queryKept: boolean } {
+	const override = overrides?.get(key)
+	if (override && override.length > 0 && override.length < serialized.length) {
+		return { head: override.slice(0, cap), queryKept: true }
+	}
+	return { head: serialized.slice(0, cap), queryKept: false }
+}
+
 export function compactMessagesAtBoundary(
 	messages: ModelMessage[],
-	options: {
-		activeDiscoveryApps?: Iterable<string>
-		preserveLoadedSkills?: boolean
-	} = {},
+	options: BoundaryOptions = {},
 ): ModelMessage[] {
 	const withoutState = messages.filter(
 		(message) => !isTurnStateMessage(message),
@@ -532,13 +607,14 @@ export function compactMessagesAtBoundary(
 	for (const result of results) {
 		if (compactedValue(result.value)) continue
 		const serialized = outputText(result.output)
+		const key = boundaryKey(result)
 		if (result.toolName === "load_skill") {
 			if (options.preserveLoadedSkills) continue
 			const loaded =
 				result.value && typeof result.value === "object"
 					? (result.value as { name?: unknown; version?: unknown })
 					: undefined
-			replacements.set(`${result.messageIndex}:${result.partIndex}`, {
+			replacements.set(key, {
 				compacted: true,
 				tool: "load_skill",
 				name: typeof loaded?.name === "string" ? loaded.name : undefined,
@@ -553,21 +629,35 @@ export function compactMessagesAtBoundary(
 		if (discoveryResultIsActive(result, inputs, activeDiscoveryApps)) continue
 		if (recent.has(result)) {
 			if (serialized.length <= RECENT_TOOL_RESULT_CHAR_LIMIT) continue
-			replacements.set(`${result.messageIndex}:${result.partIndex}`, {
+			const { head, queryKept } = keptHead(
+				key,
+				serialized,
+				RECENT_TOOL_RESULT_CHAR_LIMIT,
+				options.headOverrides,
+			)
+			replacements.set(key, {
 				boundaryBounded: true,
 				tool: result.toolName,
-				head: serialized.slice(0, RECENT_TOOL_RESULT_CHAR_LIMIT),
+				head,
+				...(queryKept ? { queryKept: true } : {}),
 				resultDigest: stableDigest(serialized),
 				originalChars: serialized.length,
 			})
 			continue
 		}
 		const input = result.toolCallId ? inputs.get(result.toolCallId) : undefined
-		replacements.set(`${result.messageIndex}:${result.partIndex}`, {
+		const { head, queryKept } = keptHead(
+			key,
+			serialized,
+			COMPACTED_RESULT_HEAD_CHARS,
+			options.headOverrides,
+		)
+		replacements.set(key, {
 			compacted: true,
 			tool: result.toolName,
 			argsSummary: safeJson(input).slice(0, 300),
-			head: serialized.slice(0, COMPACTED_RESULT_HEAD_CHARS),
+			head,
+			...(queryKept ? { queryKept: true } : {}),
 			resultDigest: stableDigest(serialized),
 			originalChars: serialized.length,
 		})

@@ -54,8 +54,8 @@ import { cardOutputPayload } from "./card-content"
 import {
 	applySystemCacheBreakpoints,
 	buildTurnMessageLayout,
-	compactMessagesAtBoundary,
 } from "./context"
+import { compactMessagesForModel } from "./supercompress"
 import { getTurnDeps } from "./deps"
 import {
 	selectTurnReply,
@@ -798,8 +798,11 @@ export async function computeTurn(
 					userId,
 					actor,
 					question,
-					messages: compactMessagesAtBoundary(conversation, {
+					messages: await compactMessagesForModel(conversation, {
 						activeDiscoveryApps: Object.keys(state.apps.discovered),
+						query: question,
+						supercompressApiKey: env.SUPERCOMPRESS_API_KEY,
+						signal: abortSignal,
 					}),
 					approvalIds: approvals.map((item) => item.approvalId),
 					connectedAppPause: connectedAppPause?.ref,
@@ -856,9 +859,12 @@ export async function computeTurn(
 			}
 		}
 
-		const compactContinuation = (messages: ModelMessage[]): ModelMessage[] =>
-			compactMessagesAtBoundary(messages, {
+		const compactContinuation = (messages: ModelMessage[]) =>
+			compactMessagesForModel(messages, {
 				activeDiscoveryApps: Object.keys(state.apps.discovered),
+				query: question,
+				supercompressApiKey: env.SUPERCOMPRESS_API_KEY,
+				signal: abortSignal,
 			})
 
 		let sourceMessages = initialMessages
@@ -894,7 +900,7 @@ export async function computeTurn(
 					throw new Error("approval claim failed without a pending update")
 				}
 				const response = await result.response
-				sourceMessages = compactContinuation([
+				sourceMessages = await compactContinuation([
 					...sourceMessages,
 					...currentRunLiveUpdateMessages,
 					...response.messages,
@@ -910,6 +916,10 @@ export async function computeTurn(
 				run: { result, messages: sourceMessages },
 				adapter: finalizationAdapter,
 				activeDiscoveryApps: Object.keys(state.apps.discovered),
+				supercompress: {
+					query: question,
+					apiKey: env.SUPERCOMPRESS_API_KEY,
+				},
 				coordination: options?.turnControl
 					? {
 							agent,

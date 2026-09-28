@@ -1,5 +1,5 @@
 import type { ModelMessage } from "ai"
-import { compactMessagesAtBoundary } from "../context"
+import { compactMessagesForModel } from "../supercompress"
 
 const LIVE_UPDATE_REBASE_INSTRUCTION = [
 	"<live_update_rebase>",
@@ -10,11 +10,14 @@ const LIVE_UPDATE_REBASE_INSTRUCTION = [
 ].join("\n")
 
 /** Re-prompts from the completed draft without discarding gathered evidence. */
-export function rebaseFinalReply(args: {
+export async function rebaseFinalReply(args: {
 	messages: ModelMessage[]
 	draft: string
 	activeDiscoveryApps: string[]
-}): ModelMessage[] {
+	query?: string
+	supercompressApiKey?: string
+	signal?: AbortSignal
+}): Promise<ModelMessage[]> {
 	const draft = args.draft.trim()
 	const instruction = draft
 		? [
@@ -25,10 +28,13 @@ export function rebaseFinalReply(args: {
 			].join("\n")
 		: LIVE_UPDATE_REBASE_INSTRUCTION
 	return [
-		...compactMessagesAtBoundary(args.messages, {
+		...(await compactMessagesForModel(args.messages, {
 			activeDiscoveryApps: args.activeDiscoveryApps,
 			preserveLoadedSkills: true,
-		}),
+			query: args.query,
+			supercompressApiKey: args.supercompressApiKey,
+			signal: args.signal,
+		})),
 		{ role: "user", content: instruction },
 	]
 }

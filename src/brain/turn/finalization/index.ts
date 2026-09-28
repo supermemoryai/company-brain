@@ -49,6 +49,10 @@ export async function settleTurn<
 	}
 	adapter: TurnFinalizationAdapter<Result, Candidate>
 	activeDiscoveryApps: string[]
+	supercompress?: {
+		query?: string
+		apiKey?: string
+	}
 	coordination?: {
 		agent: CompanyBrainAgent
 		control: TurnControlSnapshot
@@ -78,7 +82,7 @@ export async function settleTurn<
 	const { messages } = await args.run.result.response
 	return {
 		status: "continue",
-		messages: rebaseFinalReply({
+		messages: await rebaseFinalReply({
 			messages: [
 				...args.run.messages,
 				...args.adapter.liveUpdates.current(),
@@ -87,6 +91,9 @@ export async function settleTurn<
 			],
 			draft: candidate.reply,
 			activeDiscoveryApps: args.activeDiscoveryApps,
+			query: args.supercompress?.query,
+			supercompressApiKey: args.supercompress?.apiKey,
+			signal: args.abortSignal,
 		}),
 	}
 }
