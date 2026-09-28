@@ -1,3 +1,4 @@
+import type { TurnSurface } from "../surface"
 import type { TurnCardSource, TurnProgress } from "../turn"
 import {
 	appendSlackStreamChunks,
@@ -19,18 +20,7 @@ import {
 	splitSlackMarkdown,
 } from "./format"
 
-type StreamSession = {
-	progress: TurnProgress
-	finalize: (
-		reply: string,
-		failed: boolean,
-		paused?: boolean,
-		settled?: boolean,
-	) => Promise<{ streamed: boolean; messageTs?: string }>
-	discard: (reply?: string) => Promise<void>
-	postFallback: (reply: string) => Promise<string | undefined>
-	rewriteLastNarration: (text: string) => Promise<boolean>
-}
+type StreamSession = TurnSurface
 
 type TaskStatus = "in_progress" | "complete" | "error"
 
