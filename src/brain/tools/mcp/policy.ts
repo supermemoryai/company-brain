@@ -4,6 +4,7 @@ import {
 	type McpOperationEffect,
 	operationIsRead,
 } from "./approval-classifier"
+import { queryToolCallHasDdl, queryToolCallHasDml } from "./sql-dml"
 
 const METADATA_VERBS = new Set([
 	"capabilities",
@@ -116,6 +117,22 @@ export async function classifyMcpOperation(args: {
 			effect: args.effectOverride,
 			source: "router_contract",
 			reason: "The decoded router operation has an explicit host contract.",
+		}
+	}
+	// A query tool's name says nothing about what its SQL does. Look at the SQL
+	// before trusting annotations or the "query" read verb.
+	if (queryToolCallHasDdl(args.method, args.input)) {
+		return {
+			effect: "destructive",
+			source: "sql_ddl",
+			reason: "The SQL in this call drops, alters or truncates a table or other object.",
+		}
+	}
+	if (queryToolCallHasDml(args.method, args.input)) {
+		return {
+			effect: "material_write",
+			source: "sql_dml",
+			reason: "The SQL in this call inserts, updates or deletes data.",
 		}
 	}
 	const annotated = annotatedOperationEffect({
