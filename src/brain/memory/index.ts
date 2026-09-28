@@ -27,9 +27,9 @@ import {
 import {
 	buildSlackMemoryWriteRequest,
 	type MemoryDocInput,
+	type MemoryScope,
 	type MemoryWriteback,
 	memoryDocsFromWriteback,
-	type SlackMemoryScope,
 	slackMemoryContainerTag,
 } from "./writeback"
 
@@ -54,7 +54,7 @@ export async function writeMemory(
 	org: SlackOrg,
 	userId: string,
 	doc: MemoryDocInput,
-	scope?: SlackMemoryScope,
+	scope?: MemoryScope,
 	agent?: CompanyBrainAgent,
 	options?: MemoryWriteOptions,
 ): Promise<{ written: boolean }> {
@@ -214,7 +214,7 @@ export async function writeMemories(
 	org: SlackOrg,
 	userId: string,
 	memory: MemoryWriteback,
-	scope?: SlackMemoryScope,
+	scope?: MemoryScope,
 	agent?: CompanyBrainAgent,
 	options?: MemoryWriteOptions,
 ): Promise<{ written: number; total: number }> {

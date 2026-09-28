@@ -11,7 +11,7 @@
 		"db:generate": "drizzle-kit generate && bun scripts/bundle-migrations.ts",
 		"db:migrate:local": "wrangler d1 migrations apply DB --local",
 		"db:migrate": "wrangler d1 migrations apply DB --remote",
-		"test": "vitest run",
+		"test": "bun test",
 		"build:web": "bun web/build.ts"
 	},
 	"dependencies": {

@@ -1,4 +1,4 @@
-import type { SlackMemoryScope } from "../memory"
+import type { MemoryScope } from "../memory"
 import { normalizeSlackMessageContent } from "./attachments"
 import {
 	checkAskerCanSearchChannel,
@@ -49,7 +49,7 @@ export type SlackLookupContext = {
 	channel: string
 	threadTs?: string
 	teamId?: string
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 	/** Explicit read surface (admin console); replaces what memoryScope implies. */
 	memoryContainerTags?: string[]
 	tzOffsetSeconds?: number

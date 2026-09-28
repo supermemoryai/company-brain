@@ -12,6 +12,7 @@ import type {
 } from "../slack/client"
 import type { TurnControlSnapshot } from "../slack/turn-control"
 import type { SlackOrg } from "../slack/workspace"
+import type { TurnSurfaceContext } from "../surface"
 import type { TurnActor } from "./actor"
 import type { CompanyBrainAgent } from "./agent"
 import type { ApprovalResumeState, PendingApproval } from "./approval"
@@ -109,6 +110,8 @@ export type ComputeTurnInput = {
 	progress?: TurnProgress
 	interaction?: InteractionContext
 	slackLookup?: SlackLookupContext
+	/** Surface the turn runs on. Absent means Slack's capabilities, as before. */
+	surface?: TurnSurfaceContext
 	/** Slack ids explicitly mentioned in the current message. */
 	mentionedSlackUserIds?: string[]
 	memoryTagSlackUserIds?: string[]

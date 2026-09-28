@@ -3,7 +3,7 @@ import { buildBrainProfileContext } from "../memory/profile-recall"
 import { resolveBrainReadContainerTags } from "../memory/read-scope"
 import { BRAIN_MEMORY_TAG_KINDS, listBrainMemoryTags } from "../memory/tags"
 import { fetchSubtreeBrainMemories, outlineBrainTree } from "../memory/tree"
-import type { SlackMemoryScope } from "../memory/writeback"
+import type { MemoryScope } from "../memory/writeback"
 import { logPreview } from "../observability/log-utils"
 import { formatThreadHistoryEntries } from "../prompt/build"
 import type { SlackLookupContext } from "../slack/channel-lookup"
@@ -41,9 +41,11 @@ export function createContextDiscoveryTools(args: {
 	directory: SlackMember[]
 	threadHistory?: TurnThreadHistory
 	slackLookup?: SlackLookupContext
+	/** Defaults to true; false drops inspect_people_directory. */
+	includePeopleDirectory?: boolean
 	askerSlackUserId?: string
 	mentionedSlackUserIds?: string[]
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 	/** Explicit read surface (admin console); replaces what memoryScope implies. */
 	memoryContainerTags?: string[]
 	traceId: string
@@ -56,6 +58,7 @@ export function createContextDiscoveryTools(args: {
 		directory,
 		threadHistory,
 		slackLookup,
+		includePeopleDirectory = true,
 		askerSlackUserId,
 		mentionedSlackUserIds = [],
 		memoryScope,
@@ -66,12 +69,9 @@ export function createContextDiscoveryTools(args: {
 	if (askerSlackUserId) knownSlackIds.add(askerSlackUserId)
 	for (const id of mentionedSlackUserIds) knownSlackIds.add(id)
 
-	const peopleDirectoryTools = createPeopleDirectoryTools({
-		deps,
-		env,
-		directory,
-		traceId,
-	})
+	const peopleDirectoryTools = includePeopleDirectory
+		? createPeopleDirectoryTools({ deps, env, directory, traceId })
+		: {}
 
 	const recall_tagged_memories = deps.tool({
 		description:

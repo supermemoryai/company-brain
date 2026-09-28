@@ -1,3 +1,4 @@
+import { surfaceThreadKey } from "../surface"
 import type { TurnProgress } from "../turn"
 import type { CompanyBrainAgent } from "../turn/agent"
 import { APPROVAL_EXPIRY_MS } from "../turn/approval"
@@ -116,7 +117,12 @@ export function slackThreadTurnKey(
 	channel: string,
 	threadTs: string,
 ): string {
-	return `${teamId}:${channel}:${threadTs}`
+	return surfaceThreadKey({
+		kind: "slack",
+		tenantId: teamId,
+		conversationId: channel,
+		threadId: threadTs,
+	})
 }
 
 // Eviction takes the controller with it, so a missing one means orphaned, not fresh.

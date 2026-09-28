@@ -11,7 +11,7 @@ import { maybeSyncBrainProfileConfig } from "../memory/profile-sync"
 import {
 	type MemoryWriteback,
 	memoryDocsFromWriteback,
-	type SlackMemoryScope,
+	type MemoryScope,
 } from "../memory/writeback"
 import type { BrainObservabilityInput } from "../observability"
 import {
@@ -25,6 +25,7 @@ import {
 	isOurSlackBotMessage,
 	originalRequestForConnectAcceptance,
 } from "../prompt/build"
+import { SLACK_SURFACE_CAPABILITIES } from "../surface"
 import { getCatalogEntry, isMcpCatalogSlug } from "../tools/mcp/catalog"
 import { startMcpConnect } from "../tools/mcp/connect"
 import {
@@ -224,7 +225,7 @@ function slackMemoryScopeForTurn(args: {
 	userId?: string
 	slackUserId?: string
 	conversationInfo?: SlackConversationInfo
-}): SlackMemoryScope {
+}): MemoryScope {
 	const { isDM, channel, channelType, userId, slackUserId, conversationInfo } =
 		args
 	const base = {
@@ -254,7 +255,7 @@ function slackMemoryScopeForTurn(args: {
 }
 
 function slackMemoryWriterUserId(
-	scope: SlackMemoryScope | undefined,
+	scope: MemoryScope | undefined,
 	fallbackUserId: string | undefined,
 ): string | undefined {
 	if (scope?.kind === "dm" || scope?.kind === "private_channel") {
@@ -2886,6 +2887,16 @@ async function runSlackTurnInner(
 			: fencedProgress(agent, turnControl, stream.progress),
 		interaction,
 		slackLookup,
+		surface: {
+			kind: "slack",
+			ref: {
+				kind: "slack",
+				tenantId: msg.teamId,
+				conversationId: channel,
+				threadId: threadTs,
+			},
+			capabilities: SLACK_SURFACE_CAPABILITIES,
+		},
 		mentionedSlackUserIds: mentionedSlackIds,
 		memoryTagSlackUserIds,
 		agentMainEffort: opts?.agentMainEffort,

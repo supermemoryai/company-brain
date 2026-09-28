@@ -8,7 +8,7 @@ import {
 import type { SlackOrg } from "../slack/workspace"
 import { brainAgent, type CompanyBrainAgent } from "../turn/agent"
 import { getTurnDeps } from "../turn/deps"
-import type { SlackMemoryScope } from "."
+import type { MemoryScope } from "."
 import { resolveBrainReadContainerTags } from "./read-scope"
 
 export {
@@ -26,7 +26,7 @@ export async function searchBrain(
 	org: SlackOrg,
 	userId: string,
 	q: string,
-	scope?: SlackMemoryScope,
+	scope?: MemoryScope,
 	traceId?: string,
 	focusTags?: string[],
 	containerTagsOverride?: string[],

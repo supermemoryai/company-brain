@@ -1,5 +1,5 @@
 import type { ModelMessage } from "ai"
-import type { MemoryWriteback, SlackMemoryScope } from "../memory"
+import type { MemoryWriteback, MemoryScope } from "../memory"
 import type { SlackBotIdentity } from "../slack/client"
 import type { TurnControlSnapshot } from "../slack/turn-control"
 import type { ConnectedAppPauseRef } from "../tools/mcp/pause"
@@ -36,7 +36,7 @@ export type ApprovalResumeState = {
 	assembly?: TurnToolAssemblySnapshot
 	botIdentity?: SlackBotIdentity
 	detailedAppPolicy?: boolean
-	memoryScope?: SlackMemoryScope
+	memoryScope?: MemoryScope
 	memoryTagSlackUserIds?: string[]
 	memory?: MemoryWriteback
 	turnControl?: TurnControlSnapshot

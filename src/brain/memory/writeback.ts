@@ -95,7 +95,7 @@ export function privateSlackChannelContainerTag(channelId: string): string {
 	return `slack_channel_${channelId}`
 }
 
-export type SlackMemoryScope =
+export type MemoryScope =
 	| { kind: "shared"; channelId?: string; channelType?: string }
 	| {
 			kind: "dm"
@@ -113,8 +113,11 @@ export type SlackMemoryScope =
 			userId?: string
 	  }
 
+/** @deprecated Use MemoryScope. */
+export type SlackMemoryScope = MemoryScope
+
 export function slackMemoryContainerTag(
-	scope?: SlackMemoryScope,
+	scope?: MemoryScope,
 ): string | undefined {
 	if (scope?.kind === "dm") {
 		return scope.userId ? privateContainerTagFor(scope.userId) : undefined
@@ -135,7 +138,7 @@ export type SlackMemoryWriteRequest = {
 
 export function buildSlackMemoryWriteRequest(
 	doc: MemoryDocInput,
-	scope?: SlackMemoryScope,
+	scope?: MemoryScope,
 	now = new Date(),
 	options?: {
 		allowedPersonSlackUserIds?: string[]
