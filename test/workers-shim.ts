@@ -8,4 +8,7 @@ mock.module("cloudflare:workers", () => ({
 	WorkerEntrypoint: class {},
 	WorkflowEntrypoint: class {},
 	env: {},
+	exports: {},
+	tracing: {},
 }))
+mock.module("cloudflare:email", () => ({ EmailMessage: class {} }))

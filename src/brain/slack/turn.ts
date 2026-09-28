@@ -88,6 +88,7 @@ import {
 	buildSlackBotIdentity,
 	clearAssistantThreadStatus,
 	getCachedSlackConversationInfo,
+	getSlackConversationInfo,
 	getSlackBotIdentity,
 	getSlackMessageBlocks,
 	getSlackTeamDirectory,
@@ -217,7 +218,7 @@ const SLACK_ACK_REACTION = "ack"
 const SLACK_ACK_FALLBACK_REACTION = "white_check_mark"
 const SLACK_COMPLETED_REPLY_REACTION = "brain"
 
-function slackMemoryScopeForTurn(args: {
+export function slackMemoryScopeForTurn(args: {
 	isDM: boolean
 	channel: string
 	channelType?: string
@@ -242,11 +243,14 @@ function slackMemoryScopeForTurn(args: {
 	}
 
 	// Privacy signals are intentionally monotonic: a live private event must
-	// win over cached public conversation info, and cached private info remains
-	// the safer scope when the event is ambiguous.
-	const isPrivate =
-		isPrivateSlackChannel(channel, channelType) ||
-		conversationInfo?.isPrivate === true
+	// win over cached public conversation info. app_mention events carry no
+	// channel_type, so for those the conversation lookup decides, and a failed
+	// lookup stays private.
+	const isPrivate = channelType
+		? isPrivateSlackChannel(channel, channelType) ||
+			conversationInfo?.isPrivate === true
+		: (conversationInfo?.isPrivate ??
+			isPrivateSlackChannel(channel, channelType))
 
 	return isPrivate
 		? { kind: "private_channel", ...base, ...scopedUser }
@@ -2635,14 +2639,18 @@ async function runSlackTurnInner(
 		readOnly: Boolean(passiveInvestigation),
 		memberLookup: "found",
 	}
-	const conversationInfo = !isDM
-		? await getCachedSlackConversationInfo(
-				brainAgent(agent).env,
-				msg.teamId,
-				botToken,
-				channel,
-			)
-		: undefined
+	// Without a channel_type the lookup decides the memory scope, so read it
+	// live: a cached "public" can outlive the channel going private.
+	const conversationInfo = isDM
+		? undefined
+		: ev.channel_type
+			? await getCachedSlackConversationInfo(
+					brainAgent(agent).env,
+					msg.teamId,
+					botToken,
+					channel,
+				)
+			: await getSlackConversationInfo(botToken, channel)
 	const memoryScope = slackMemoryScopeForTurn({
 		isDM,
 		channel,
