@@ -139,25 +139,19 @@ export async function runSlackMembershipEvent(
 		return
 	}
 	const botToken = await decryptToken(ws.botTokenEnc, env.ENCRYPTION_SECRET)
-	const isPrivate = await resolveChannelPrivacy(
-		env,
-		msg.teamId,
-		botToken,
-		channel,
-	)
-
-	if (isPrivate !== true) return
 	const botUserId = await ensureWorkspaceBotUserId(env, ws, botToken)
 	const isBot = Boolean(botUserId) && user === botUserId
 
 	ensureChannelMembershipTables(agent)
 	const now = Date.now()
 
+	// Revoking is always safe, so a leave never waits on the privacy lookup: if
+	// that fails, a removed member would keep reading the channel from a DM.
 	if (isLeave) {
 		if (isBot) {
 			purgeChannel(agent, channel)
 			console.log(
-				`[company-brain][membership] bot left private channel=${channel}; purged`,
+				`[company-brain][membership] bot left channel=${channel}; purged`,
 			)
 		} else {
 			removeMembership(agent, channel, user)
@@ -167,6 +161,14 @@ export async function runSlackMembershipEvent(
 		}
 		return
 	}
+
+	const isPrivate = await resolveChannelPrivacy(
+		env,
+		msg.teamId,
+		botToken,
+		channel,
+	)
+	if (isPrivate !== true) return
 
 	if (isBot) {
 		const count = await backfillChannelMembers(agent, botToken, channel, now)

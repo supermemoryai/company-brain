@@ -186,6 +186,8 @@ export async function bootstrapSlackWorkspace(
 		})
 
 		const agent = await getAgentByName(env.COMPANY_BRAIN_AGENT, args.orgId)
+		// Private channels the bot was already in never send a join event.
+		await agent.reconcileChannelMembership(args.teamId)
 
 		const home = await ensureHomeChannel(args.botToken)
 		console.log(
