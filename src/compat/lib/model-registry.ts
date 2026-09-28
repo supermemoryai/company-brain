@@ -75,6 +75,90 @@ export function getModelInfo(modelName: SupportedModel): SupportedModelInfo {
 }
 
 /**
+ * The OrcaRouter catalog names models `vendor/model`, which is not the same
+ * namespace the native registry uses: xAI is `grok/*` there, and the vendor of
+ * an Anthropic model is `anthropic`.
+ */
+const ORCA_MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}\/[a-z0-9][a-z0-9._-]{0,95}$/
+
+/** A `vendor/model` id that came from the OrcaRouter catalog, not the registry. */
+export function isOrcaCatalogModelId(value: unknown): value is string {
+	return (
+		typeof value === "string" &&
+		value.length <= 160 &&
+		ORCA_MODEL_ID_PATTERN.test(value)
+	)
+}
+
+/**
+ * Catalog ids that name the same underlying model as a native entry. These are
+ * kept so a model picked from the OrcaRouter dropdown keeps the reasoning
+ * ladder and price the registry already holds. Each id was checked against
+ * `GET https://api.orcarouter.ai/v1/models` on 2026-09-28; an id that is not
+ * listed here resolves with no reasoning options rather than a guessed ladder.
+ */
+const ORCA_CATALOG_TO_NATIVE: Record<string, SupportedModel> = {
+	"openai/gpt-5.5": "gpt-5.5",
+	"openai/gpt-5.1": "gpt-5.1",
+	"anthropic/claude-opus-4.8": "claude-opus-4.8",
+	"anthropic/claude-sonnet-5": "claude-sonnet-5",
+	"anthropic/claude-sonnet-4.6": "claude-sonnet-4.6",
+	"anthropic/claude-haiku-4.5": "claude-haiku-4.5",
+	"google/gemini-3.1-pro-preview": "gemini-3.1-pro-preview",
+	"grok/grok-4.5": "grok-4.5",
+	"grok/grok-4.3": "grok-4.3",
+}
+
+/** The native entry for a catalog id, when the two name the same model. */
+export function nativeModelForOrcaId(id: string): SupportedModel | null {
+	return ORCA_CATALOG_TO_NATIVE[id] ?? null
+}
+
+const ORCA_VENDOR_TO_PROVIDER: Record<string, SupportedModelProvider> = {
+	anthropic: "anthropic",
+	openai: "openai",
+	google: "google",
+	"x-ai": "xai",
+	xai: "xai",
+	grok: "xai",
+}
+
+/**
+ * What a stored model choice resolves to, whether it is a native model or a
+ * `vendor/model` id from the OrcaRouter catalog. A catalog id with no native
+ * equivalent reports no reasoning ladder rather than a guessed one.
+ */
+export type BrainModelResolution = {
+	/** The id as sent on the wire. */
+	modelId: string
+	provider: SupportedModelProvider | null
+	/** The native entry this is the same model as, when there is one. */
+	native: SupportedModel | null
+}
+
+export function resolveBrainModelId(name: string): BrainModelResolution | null {
+	if (isSupportedModel(name)) {
+		const info = getModelInfo(name)
+		return { modelId: info.modelId, provider: info.provider, native: name }
+	}
+	if (!isOrcaCatalogModelId(name)) return null
+	const native = nativeModelForOrcaId(name)
+	if (native) {
+		return {
+			modelId: getModelInfo(native).modelId,
+			provider: getModelInfo(native).provider,
+			native,
+		}
+	}
+	const vendor = name.split("/")[0] ?? ""
+	return {
+		modelId: name,
+		provider: ORCA_VENDOR_TO_PROVIDER[vendor] ?? null,
+		native: null,
+	}
+}
+
+/**
  * Keep Nova requests saved by older web clients on the current model lineup.
  * This is intentionally Nova-specific: other callers can still request the
  * legacy models by their exact supported IDs.
@@ -106,10 +190,16 @@ function boundedEffort(
  * collapsed into a provider-prefix switch.
  */
 export function getModelReasoningProviderOptions(
-	modelName: SupportedModel,
+	modelName: string,
 	effort: ModelReasoningEffort,
 ): SharedV3ProviderOptions {
-	switch (modelName) {
+	// A catalog id with a native equivalent keeps that model's verified ladder.
+	// Anything else has no checked reasoning support, so nothing is claimed.
+	const native = isSupportedModel(modelName)
+		? modelName
+		: nativeModelForOrcaId(modelName)
+	if (!native) return {}
+	switch (native) {
 		case "grok-4.3":
 		case "grok-4.5":
 			return {
@@ -165,9 +255,13 @@ export function getModelReasoningProviderOptions(
 
 /** Lowest-latency valid request shape for each model. */
 export function getModelInstantProviderOptions(
-	modelName: SupportedModel,
+	modelName: string,
 ): SharedV3ProviderOptions {
-	switch (modelName) {
+	const native = isSupportedModel(modelName)
+		? modelName
+		: nativeModelForOrcaId(modelName)
+	if (!native) return {}
+	switch (native) {
 		case "grok-4.3":
 			return {
 				xai: {
@@ -211,7 +305,7 @@ export function getModelInstantProviderOptions(
 
 /** Explicit user-facing "thinking" mode, independent of Brain effort controls. */
 export function getModelThinkingProviderOptions(
-	modelName: SupportedModel,
+	modelName: string,
 ): SharedV3ProviderOptions {
 	if (modelName === "claude-haiku-4.5") {
 		return {

@@ -14,6 +14,7 @@ import {
 	type BrainModelRole,
 	type BrainReasoningEffort,
 	type BrainReasoningKey,
+	type OrcaCatalogSection,
 	useBrainModels,
 	useUpdateBrainModels,
 } from "@/hooks/use-brain-models"
@@ -34,6 +35,10 @@ const MODEL_LABELS: Record<string, string> = {
 }
 
 const labelFor = (id: string) => MODEL_LABELS[id] ?? id
+
+/** The catalog's own display name, for models the registry does not list. */
+const orcaLabelFor = (id: string, name: string) =>
+	labelFor(id) === id ? name.replace(/^[^:]*:\s*/, "") || id : labelFor(id)
 
 // One-line personality tags so non-experts can tell models apart.
 const MODEL_TAGS: Record<string, string> = {
@@ -212,6 +217,35 @@ export default function CompanyBrainModels({
 	const resolved = modelsQuery.data?.resolved
 	const defaults = modelsQuery.data?.defaults
 	const choices = modelsQuery.data?.choices
+	// When OrcaRouter is the router in play its live catalog decides which
+	// models each surface may use. Without it the registry list stays in charge.
+	const orca = modelsQuery.data?.orca ?? null
+	const orcaSource = orca?.["main"] ?? null
+
+	/**
+	 * Options for one surface, already filtered to that surface's capability by
+	 * the server: the answers dropdown only holds chat models that declare image
+	 * input, because a Slack turn can carry a screenshot.
+	 */
+	const optionsFor = (role: BrainModelRole): { id: string; name: string }[] => {
+		const section = orca?.[role]
+		if (section) return section.options
+		return (choices?.[role] ?? []).map((id) => ({ id, name: labelFor(id) }))
+	}
+
+	// A saved choice that the current list no longer offers must not be kept
+	// silently; it is surfaced so the operator picks a compatible model.
+	const incompatible = useMemo(() => {
+		if (!orca) return [] as { role: BrainModelRole; id: string }[]
+		return ROWS.flatMap(({ role }) => {
+			const current = resolved?.[role]
+			if (!current) return []
+			const offered = orca[role]?.options ?? []
+			return offered.some((option) => option.id === current)
+				? []
+				: [{ role, id: current }]
+		})
+	}, [orca, resolved])
 
 	const valueFor = (role: BrainModelRole): string =>
 		draft[role] ?? resolved?.[role] ?? ""
@@ -342,10 +376,54 @@ export default function CompanyBrainModels({
 					</button>
 
 					{advancedOpen || activePresetId === null ? (
-						<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-							{ROWS.map(({ role, effortKey, title, help, effortHelp }) => {
-								const options = choices?.[role] ?? []
-								const current = valueFor(role)
+						<>
+							{orcaSource ? (
+								<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
+									<span className={cn(dmSans125ClassName(), "text-[#8B929E]")}>
+										Models come from{" "}
+										<a
+											className="underline decoration-dotted underline-offset-2 hover:text-[#FAFAFA]"
+											href="https://api.orcarouter.ai/v1/models"
+											target="_blank"
+											rel="noreferrer"
+										>
+											OrcaRouter&apos;s catalog
+										</a>
+										{" · "}
+										{orcaSource.source === "live"
+											? `${orcaSource.options.length} usable for this surface`
+											: "verified fallback list"}
+									</span>
+									{orcaSource.degraded ? (
+										<span className="rounded-full border border-amber-300/40 px-2 py-[1px] text-amber-300/90">
+											{orcaSource.degradedReason === "auth"
+												? "catalog unavailable — check the OrcaRouter key"
+												: "catalog unavailable — showing the verified list"}
+										</span>
+									) : null}
+								</div>
+							) : null}
+							{incompatible.length > 0 ? (
+								<p
+									className={cn(
+										dmSans125ClassName(),
+										"text-[11.5px] text-amber-300/90",
+									)}
+								>
+									{incompatible
+										.map(
+											({ role, id }) =>
+												`"${id}" is no longer offered for ${
+													role === "main" ? "answers" : "routing"
+												} — pick a model to replace it.`,
+										)
+										.join(" ")}
+								</p>
+							) : null}
+							<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+								{ROWS.map(({ role, effortKey, title, help, effortHelp }) => {
+									const options = optionsFor(role)
+									const current = valueFor(role)
 								const availableEfforts = choices?.[effortKey] ?? []
 								const effortOptions = orderedEfforts(
 									role === "main"
@@ -409,13 +487,13 @@ export default function CompanyBrainModels({
 													<SelectValue placeholder="Select a model…" />
 												</SelectTrigger>
 												<SelectContent className={selectContentClass}>
-													{options.map((id) => (
+													{options.map(({ id, name }) => (
 														<SelectItem
 															key={id}
 															value={id}
 															className={selectItemClass}
 														>
-															{labelFor(id)}
+															{orcaLabelFor(id, name)}
 															{MODEL_TAGS[id] ? (
 																<span className="text-[#737B87]">
 																	{" "}
@@ -487,7 +565,8 @@ export default function CompanyBrainModels({
 									</div>
 								)
 							})}
-						</div>
+							</div>
+						</>
 					) : null}
 
 					{!isAdmin ? (

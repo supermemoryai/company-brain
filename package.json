@@ -12,7 +12,8 @@
 		"db:migrate:local": "wrangler d1 migrations apply DB --local",
 		"db:migrate": "wrangler d1 migrations apply DB --remote",
 		"test": "vitest run",
-		"build:web": "bun web/build.ts"
+		"build:web": "bun web/build.ts",
+		"postinstall": "node scripts/apply-patches.mjs"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "3.0.98",

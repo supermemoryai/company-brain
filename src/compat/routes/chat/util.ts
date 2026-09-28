@@ -1,1 +1,7 @@
-export { getModelInfo, type SupportedModel } from "../../lib/model-registry"
+export {
+	getModelInfo,
+	isSupportedModel,
+	nativeModelForOrcaId,
+	resolveBrainModelId,
+	type SupportedModel,
+} from "../../lib/model-registry"

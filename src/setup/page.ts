@@ -12,6 +12,28 @@ type PageParams = {
 	/** The installed Slack workspace's name, or null before the bot is installed. */
 	installedTeam: string | null
 	manifest: object
+	/** OrcaRouter status, or null when the deployment has no database yet. */
+	orca: OrcaSetupView | null
+}
+
+/** Everything the OrcaRouter step may render. Never contains a key or verifier. */
+export type OrcaSetupView = {
+	configured: boolean
+	needsReauth: boolean
+	/** Last four characters of the stored key, for recognition only. */
+	hint: string
+	sourceLabel: string
+	credentialLabel: string
+	/** Consent URL of an attempt waiting for a code. Public values only. */
+	authorizeUrl?: string
+	/** Device-grant instructions, when one is in flight. */
+	device?: {
+		verificationUri: string
+		verificationUriComplete?: string
+		userCode?: string
+	}
+	message?: string
+	error?: boolean
 }
 
 type StepState = "done" | "current" | "upcoming"
@@ -21,7 +43,10 @@ const PROVIDER_NAMES: Record<string, string> = {
 	openai: "OpenAI",
 	google: "Google",
 	xai: "xAI",
+	orcarouter: "OrcaRouter",
 }
+
+const ORCA_LOGO_URL = "https://www.orcarouter.ai/orca-logo-classic.png"
 
 const SECRET_HOW =
 	"Add it in the Cloudflare dashboard under your worker → <em>Settings → Variables and Secrets</em> (type: Secret), or run <code>wrangler secret put NAME</code>, then reload this page."
@@ -69,11 +94,82 @@ function keysBody(params: PageParams): string {
 	if (params.providers.length === 0) {
 		rows.push(
 			params.modelKeyUnrecognized
-				? "<li><strong><code>MODEL_API_KEY</code></strong> is set, but it doesn't look like an Anthropic (<code>sk-ant-</code>), OpenAI (<code>sk-</code>), Google (<code>AIza</code>), xAI (<code>xai-</code>) or OpenRouter (<code>sk-or-</code>) key. Check it, or set the provider's own variable, like <code>ANTHROPIC_API_KEY</code>.</li>"
-				: "<li><strong><code>MODEL_API_KEY</code></strong> is missing. Use an Anthropic, OpenAI, Google, xAI or OpenRouter key, whichever you have.</li>",
+				? "<li><strong><code>MODEL_API_KEY</code></strong> is set, but it doesn't look like an Anthropic (<code>sk-ant-</code>), OpenAI (<code>sk-</code>), Google (<code>AIza</code>), xAI (<code>xai-</code>), OpenRouter (<code>sk-or-</code>) or OrcaRouter (<code>sk-orca-</code>) key. Check it, or set the provider's own variable, like <code>ANTHROPIC_API_KEY</code>.</li>"
+				: "<li><strong><code>MODEL_API_KEY</code></strong> is missing. Use an Anthropic, OpenAI, Google, xAI, OpenRouter or OrcaRouter key, whichever you have.</li>",
 		)
 	}
 	return `<ul class="todo">${rows.join("")}</ul><p>${SECRET_HOW}</p>`
+}
+
+/**
+ * OrcaRouter, offered as its own step because either credential source works
+ * on its own: operators who already hold a key paste it, and operators who do
+ * not can authorize with their OrcaRouter account instead.
+ */
+function orcaBody(status: OrcaSetupView): string {
+	const state = !status.configured
+		? `<p class="muted">Not connected yet. Pick either method below.</p>`
+		: status.needsReauth
+			? `<p class="warn">OrcaRouter rejected the stored key, so it has to be replaced. Connect again below.</p>`
+			: `<p class="summary-line">Connected<strong>${status.sourceLabel ? ` via ${escapeHtml(status.sourceLabel)}` : ""}</strong>${
+					status.hint ? ` · key ending <code>…${escapeHtml(status.hint)}</code>` : ""
+				}. Replacing it below overwrites the stored key.</p>`
+
+	const notice = status.message
+		? `<p class="${status.error ? "warn" : "summary-line"}">${escapeHtml(status.message)}</p>`
+		: ""
+
+	const authorizeUrl = status.authorizeUrl
+		? `<p class="hint">Your browser didn't open? <a href="${escapeHtml(status.authorizeUrl)}" target="_blank" rel="noreferrer">Open the consent screen</a>.</p>
+<form method="post" action="/setup/orca/complete" class="orca-method">
+	<h3>Finish authorizing</h3>
+	<p class="hint">The consent screen shows a code. Paste it here.</p>
+	<label for="orcaCode">Code</label>
+	<input id="orcaCode" name="code" autocomplete="off" required>
+	<button type="submit">Connect</button>
+</form>`
+		: ""
+
+	const deviceBlock = status.device
+		? `<div class="banner"><p>On another device, open <a href="${escapeHtml(
+				status.device.verificationUriComplete ?? status.device.verificationUri,
+			)}" target="_blank" rel="noreferrer">${escapeHtml(
+				status.device.verificationUriComplete ?? status.device.verificationUri,
+			)}</a>${
+				status.device.userCode
+					? ` and enter <code>${escapeHtml(status.device.userCode)}</code>`
+					: ""
+			}.</p>
+<form method="post" action="/setup/orca/device/poll" class="inline"><button type="submit">I've approved — check now</button></form></div>`
+		: ""
+
+	return `${state}${notice}
+<div class="methods">
+	<form method="post" action="/setup/orca/key" class="orca-method" data-method="api-key">
+		<h3><img src="${ORCA_LOGO_URL}" alt="" width="18" height="18"> OrcaRouter - API</h3>
+		<p class="hint">You already have an <code>sk-orca-…</code> key. Create or copy one from the <a href="https://www.orcarouter.ai/console/authorized-apps" target="_blank" rel="noreferrer">OrcaRouter console</a>.</p>
+		<label for="orcaKey">API key</label>
+		<input id="orcaKey" name="key" type="password" autocomplete="off" placeholder="sk-orca-…" required>
+		<button type="submit">Save key</button>
+	</form>
+	<form method="post" action="/setup/orca/authorize" class="orca-method" data-method="pkce">
+		<h3><img src="${ORCA_LOGO_URL}" alt="" width="18" height="18"> OrcaRouter - Auth</h3>
+		<p class="hint">No key yet? Sign in with your OrcaRouter account using OAuth 2.0 + PKCE. We mint a key that belongs to you and store it here.</p>
+		<button type="submit" name="flow" value="oob" class="btn-secondary">Connect with OrcaRouter</button>
+	</form>
+</div>
+${authorizeUrl}${deviceBlock}${
+		status.configured
+			? `<form method="post" action="/setup/orca/clear" class="inline"><button type="submit" class="linkish">Disconnect OrcaRouter</button></form>`
+			: ""
+	}
+<details class="extras">
+	<summary>Headless install (no browser)?</summary>
+	<form method="post" action="/setup/orca/authorize" class="orca-method">
+		<p class="hint">Use a device code: approve on your phone, nothing to paste back.</p>
+		<button type="submit" name="flow" value="device" class="btn-secondary">Start device authorization</button>
+	</form>
+</details>`
 }
 
 function slackAppBody(params: PageParams): string {
@@ -125,7 +221,10 @@ export function setupPage(params: PageParams): string {
 
 	// Each step unlocks the next. Signing in uses the Slack app, so it comes
 	// after the app exists, and installing needs someone signed in to own it.
-	const states: Record<"keys" | "slack" | "signin" | "install", StepState> = {
+	const states: Record<
+		"keys" | "slack" | "signin" | "install" | "orca",
+		StepState
+	> = {
 		keys: keysDone ? "done" : "current",
 		slack: params.slackConfigured ? "done" : keysDone ? "current" : "upcoming",
 		signin: params.signedIn
@@ -138,12 +237,35 @@ export function setupPage(params: PageParams): string {
 			: params.signedIn && params.slackConfigured
 				? "current"
 				: "upcoming",
+		// Optional and never blocks another step, so it shows its body as soon
+		// as the page can talk to the deployment: both credential methods are
+		// reachable without finishing Slack first.
+		orca: params.orca?.configured
+			? params.orca.needsReauth
+				? "current"
+				: "done"
+			: "current",
 	}
 	const allDone = keysDone && params.slackConfigured && installed
 
 	const providerNames = params.providers
 		.map((p) => PROVIDER_NAMES[p] ?? p)
 		.join(", ")
+
+	const orcaStepHtml = params.orca
+		? step(
+				"orca",
+				5,
+				states.orca,
+				"Connect OrcaRouter (optional)",
+				`Models run through OrcaRouter${
+					params.orca.hint
+						? ` · key ending <code>…${escapeHtml(params.orca.hint)}</code>`
+						: ""
+				}, via ${escapeHtml(params.orca.credentialLabel)}.`,
+				orcaBody(params.orca),
+			)
+		: ""
 
 	return `<!doctype html>
 <html lang="en">
@@ -192,6 +314,19 @@ export function setupPage(params: PageParams): string {
 	.extras { margin-top:2rem; border-top:1px solid var(--line); padding-top:1rem; color:var(--muted); font-size:.92rem; }
 	.extras summary { cursor:pointer; font-weight:600; color:var(--fg); }
 	.extras strong { color:var(--fg); }
+	.methods { display:grid; gap:.85rem; grid-template-columns:1fr; margin-top:.4rem; }
+	@media (min-width:34rem) { .methods { grid-template-columns:1fr 1fr; } }
+	.orca-method { display:flex; flex-direction:column; margin:0; }
+	.orca-method h3 { display:flex; align-items:center; gap:.45rem; font-size:.92rem; margin:0 0 .35rem; color:var(--fg); }
+	.orca-method h3 img { border-radius:.25rem; display:block; }
+	.orca-method .hint { margin:0 0 .2rem; font-size:.85rem; color:var(--muted); }
+	.orca-method button { margin-top:auto; align-self:flex-start; }
+	.orca-method button.btn-secondary, .btn-secondary { background:transparent; color:var(--fg); border:1px solid var(--line); }
+	.linkish { background:none; border:0; padding:0; margin:0; color:var(--muted); font-weight:500; text-decoration:underline; cursor:pointer; }
+	.summary-line { margin:.2rem 0 .6rem; color:var(--muted); }
+	.summary-line strong { color:var(--fg); }
+	.hint { color:var(--muted); font-size:.88rem; }
+	.muted { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -231,6 +366,7 @@ export function setupPage(params: PageParams): string {
 		`Installed in ${escapeHtml(params.installedTeam ?? "")}. If the bot never greeted you, <a href="/brain/slack/oauth/install">add it again</a> to rerun its setup.`,
 		`<p>Slack asks you to approve the bot's permissions. Once you do, it DMs you to say hi, joins your public channels and introduces itself, and offers to invite your teammates.</p><a class="btn" href="/brain/slack/oauth/install">Add to Slack</a>`,
 	)}
+	${orcaStepHtml}
 	${
 		allDone
 			? `<div class="finished"><strong>You're all set.</strong><p>Say hi to the bot in Slack, or open the app to connect tools and tune how it behaves.</p><a class="btn" href="/">Open the app</a></div>`

@@ -860,7 +860,7 @@ export async function triageChimeMessage(
 						isError: error !== undefined,
 						error,
 						providerError,
-						model: profile.name,
+						model: profile.name as string,
 						traceSampleRate: obs.triageTraceSampleRate,
 					})
 				} catch {

@@ -10,4 +10,10 @@ describe("providerForModelKey", () => {
 		expect(providerForModelKey("xai-abc")).toBe("xai")
 		expect(providerForModelKey("something-else")).toBeNull()
 	})
+
+	it("reads an OrcaRouter key as OrcaRouter, never as OpenAI or OpenRouter", () => {
+		expect(providerForModelKey("sk-orca-testonly-0000")).toBe("orcarouter")
+		// Order matters: `sk-or-` must not swallow `sk-orca-`.
+		expect(providerForModelKey("sk-or-v1-abc")).toBe("openrouter")
+	})
 })

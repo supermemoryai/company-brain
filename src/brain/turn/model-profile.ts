@@ -2,6 +2,9 @@ import type { SharedV3ProviderOptions } from "@ai-sdk/provider"
 import {
 	getModelInfo,
 	getModelReasoningProviderOptions,
+	isOrcaCatalogModelId,
+	isSupportedModel,
+	resolveBrainModelId,
 	type ModelReasoningEffort,
 	type SupportedModel,
 	type SupportedModelProvider,
@@ -12,15 +15,21 @@ export type Effort = ModelReasoningEffort
 export type BrainModelProvider = SupportedModelProvider
 export type BrainProfileModel = SupportedModel
 
-export type ModelProfile<ModelName extends BrainProfileModel = SupportedModel> =
-	{
-		name: ModelName
-		provider: BrainModelProvider
-		effort: Effort
-		providerOptions: (effort: Effort) => SharedV3ProviderOptions
-		cacheControl: () => SharedV3ProviderOptions | undefined
-		maxSteps: number
-	}
+/**
+ * A stored brain model choice. It is either a native registry entry or a
+ * `vendor/model` id picked from the live OrcaRouter catalog, which is not
+ * limited to the models this repository hardcodes.
+ */
+export type BrainModelId = string
+
+export type ModelProfile<ModelName extends BrainModelId = BrainModelId> = {
+	name: ModelName
+	provider: BrainModelProvider | null
+	effort: Effort
+	providerOptions: (effort: Effort) => SharedV3ProviderOptions
+	cacheControl: () => SharedV3ProviderOptions | undefined
+	maxSteps: number
+}
 
 export const BRAIN_MODEL = "grok-4.5" as const
 export const BRAIN_FALLBACK_MODEL = "claude-sonnet-5" as const
@@ -60,9 +69,9 @@ export const BRAIN_MAIN_EFFORT_CHOICES = [
 ] as const satisfies readonly (Effort | "auto")[]
 
 export type BrainModelConfig = {
-	main?: SupportedModel
+	main?: BrainModelId
 	mainEffort?: Effort | "auto"
-	triage?: SupportedModel
+	triage?: BrainModelId
 	triageEffort?: Effort
 }
 
@@ -76,10 +85,23 @@ function readBrainModels(metadata: unknown): BrainModelConfig {
 	return isRecord(brainModels) ? (brainModels as BrainModelConfig) : {}
 }
 
-export function resolveBrainMainModel(metadata: unknown): SupportedModel {
+/**
+ * A model the operator may have picked from the live OrcaRouter catalog. It is
+ * a `vendor/model` id, so it is accepted here rather than being forced back to
+ * the hardcoded list — otherwise the dropdown could offer a model the brain
+ * would refuse to run.
+ */
+export function isUsableBrainModelId(
+	value: unknown,
+): value is BrainModelId {
+	return isSupportedModel(value) || isOrcaCatalogModelId(value)
+}
+
+export function resolveBrainMainModel(metadata: unknown): BrainModelId {
 	const picked = readBrainModels(metadata).main
 	return picked &&
-		(BRAIN_MAIN_MODEL_CHOICES as readonly string[]).includes(picked)
+		((BRAIN_MAIN_MODEL_CHOICES as readonly string[]).includes(picked) ||
+			isOrcaCatalogModelId(picked))
 		? picked
 		: BRAIN_MODEL
 }
@@ -108,10 +130,11 @@ function resolveBrainEffort(
 		: fallback
 }
 
-export function resolveBrainTriageModel(metadata: unknown): SupportedModel {
+export function resolveBrainTriageModel(metadata: unknown): BrainModelId {
 	const picked = readBrainModels(metadata).triage
 	return picked &&
-		(BRAIN_TRIAGE_MODEL_CHOICES as readonly string[]).includes(picked)
+		((BRAIN_TRIAGE_MODEL_CHOICES as readonly string[]).includes(picked) ||
+			isOrcaCatalogModelId(picked))
 		? picked
 		: TRIAGE_MODEL
 }
@@ -120,29 +143,33 @@ export function resolveBrainTriageEffort(metadata: unknown): Effort {
 	return resolveBrainEffort(metadata, "triageEffort", BRAIN_TRIAGE_EFFORT)
 }
 
-export function brainFallbackModelFor(name: BrainProfileModel): SupportedModel {
-	return getModelInfo(name).provider === "anthropic"
+export function brainFallbackModelFor(name: BrainModelId): SupportedModel {
+	return resolveBrainModelId(name)?.provider === "anthropic"
 		? BRAIN_FALLBACK_MODEL_FOR_ANTHROPIC
 		: BRAIN_FALLBACK_MODEL
 }
 
-export function createModelProfile<ModelName extends BrainProfileModel>(
+export function createModelProfile<ModelName extends BrainModelId>(
 	name: ModelName,
 	effort: Effort = BRAIN_MAIN_EFFORT,
 ): ModelProfile<ModelName> {
-	const provider = getModelInfo(name).provider
+	const resolved = resolveBrainModelId(name)
+	const provider = resolved?.provider ?? null
 	return {
 		name,
 		provider,
 		effort,
 		maxSteps: MAX_STEPS,
 		providerOptions(requestedEffort): SharedV3ProviderOptions {
+			const native = resolved?.native
 			return {
 				...getModelReasoningProviderOptions(
 					brainFallbackModelFor(name),
 					"medium",
 				),
-				...getModelReasoningProviderOptions(name, requestedEffort),
+				// A catalog id with no native equivalent has no verified reasoning
+				// ladder, so nothing is claimed for it.
+				...(native ? getModelReasoningProviderOptions(native, requestedEffort) : {}),
 			}
 		},
 		cacheControl(): SharedV3ProviderOptions | undefined {

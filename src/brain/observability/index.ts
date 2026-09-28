@@ -7,7 +7,25 @@ import {
 	captureAiTrace,
 	flushTelemetry,
 } from "@/lib/posthog"
-import { getModelInfo, type SupportedModel } from "@/routes/chat/util"
+import {
+	getModelInfo,
+	isSupportedModel,
+	nativeModelForOrcaId,
+	type SupportedModel,
+} from "@/routes/chat/util"
+
+/**
+ * Model metadata for telemetry. A live OrcaRouter catalog id maps to its
+ * native entry when there is one; an id with no native equivalent reports the
+ * vendor from its namespace rather than a guessed provider.
+ */
+function modelInfoFor(name: string): { modelId: string; provider: string } {
+	if (isSupportedModel(name)) return getModelInfo(name)
+	const native = nativeModelForOrcaId(name)
+	if (native) return getModelInfo(native)
+	return { modelId: name, provider: name.split("/")[0] ?? "orcarouter" }
+}
+
 import type {
 	ChimeContext,
 	TriageGenerationError,
@@ -107,7 +125,7 @@ export function createBrainTurnTelemetry(
 	orgId: string,
 	userId: string,
 	input?: BrainObservabilityInput,
-	mainModel: SupportedModel = BRAIN_MODEL,
+	mainModel: string = BRAIN_MODEL,
 ) {
 	const distinctId = input?.distinctId ?? userId
 	const traceId = input?.traceId ?? generateId()
@@ -335,7 +353,7 @@ export function createBrainTurnTelemetry(
 					(latencyByPhase.get("model") ?? 0) + args.latencyMs,
 				)
 			}
-			const modelInfo = getModelInfo(mainModel)
+			const modelInfo = modelInfoFor(mainModel)
 			const generationProperties = {
 				...baseProps,
 				...promptProperties,
@@ -479,10 +497,10 @@ export async function captureBrainTriageGeneration(args: {
 	isError?: boolean
 	error?: TriageGenerationError
 	providerError?: TriageProviderError
-	model?: SupportedModel
+	model?: string
 	traceSampleRate?: number
 }): Promise<void> {
-	const modelInfo = getModelInfo(args.model ?? TRIAGE_MODEL)
+	const modelInfo = modelInfoFor(args.model ?? TRIAGE_MODEL)
 	const threadRef = slackThreadRef(args.channel, args.threadTs)
 	const source =
 		args.chimeContext === "channel"
@@ -687,7 +705,7 @@ export function captureBrainActiveTurnGateGeneration(args: {
 	latencyMs: number
 	isError?: boolean
 }) {
-	const modelInfo = getModelInfo(TRIAGE_MODEL)
+	const modelInfo = modelInfoFor(TRIAGE_MODEL)
 	const threadRef = slackThreadRef(args.channel, args.threadTs)
 	captureAiGeneration({
 		distinctId: args.distinctId,

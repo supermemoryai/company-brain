@@ -1,4 +1,4 @@
-import { db, deploymentConfig, eq } from "@repo/db"
+import { db, deploymentConfig, eq, inArray } from "@repo/db"
 import { decryptToken, encryptToken } from "@/lib/crypto"
 import { encryptionSecret } from "./secrets"
 
@@ -96,5 +96,58 @@ export async function storeSlackCredentials(
 				set: { value: row.value, updatedAt: new Date() },
 			})
 	}
+	cache.delete(env as unknown as object)
+}
+
+/** Read a set of deployment config rows, decrypted, minus the missing ones. */
+export async function readDeploymentConfig(
+	env: Env,
+	keys: readonly string[],
+): Promise<Map<string, string>> {
+	const out = new Map<string, string>()
+	if (keys.length === 0) return out
+	const rows = await db(env)
+		.select()
+		.from(deploymentConfig)
+		.where(inArray(deploymentConfig.key, [...keys]))
+	const secret = await encryptionSecret(env)
+	for (const row of rows) {
+		out.set(
+			row.key,
+			row.encrypted ? await decryptToken(row.value, secret) : row.value,
+		)
+	}
+	return out
+}
+
+/** Upsert deployment config rows, encrypting the ones marked as secrets. */
+export async function writeDeploymentConfig(
+	env: Env,
+	rows: readonly { key: string; value: string; encrypted?: boolean }[],
+): Promise<void> {
+	const secret = await encryptionSecret(env)
+	for (const row of rows) {
+		const value = row.encrypted
+			? await encryptToken(row.value, secret)
+			: row.value
+		await db(env)
+			.insert(deploymentConfig)
+			.values({ key: row.key, value, encrypted: Boolean(row.encrypted) })
+			.onConflictDoUpdate({
+				target: deploymentConfig.key,
+				set: { value, encrypted: Boolean(row.encrypted), updatedAt: new Date() },
+			})
+	}
+	cache.delete(env as unknown as object)
+}
+
+export async function deleteDeploymentConfig(
+	env: Env,
+	keys: readonly string[],
+): Promise<void> {
+	if (keys.length === 0) return
+	await db(env)
+		.delete(deploymentConfig)
+		.where(inArray(deploymentConfig.key, [...keys]))
 	cache.delete(env as unknown as object)
 }
