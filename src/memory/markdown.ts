@@ -1,5 +1,5 @@
 import { BRAIN_TAG_LABELS_METADATA_KEY } from "@/lib/memory-entry-metadata"
-import type { BrainMemory } from "./memories"
+import { type BrainMemory, readStringArray } from "./memories"
 
 export type MemoryExportSection = {
 	heading: string
@@ -8,16 +8,10 @@ export type MemoryExportSection = {
 }
 
 function labelsFor(memory: BrainMemory): string[] {
-	const labels = memory.metadata?.[BRAIN_TAG_LABELS_METADATA_KEY]
-	if (!Array.isArray(labels)) return []
-	return [
-		...new Set(
-			labels
-				.filter((label): label is string => typeof label === "string")
-				.map((label) => label.trim())
-				.filter(Boolean),
-		),
-	]
+	const labels = readStringArray(
+		memory.metadata?.[BRAIN_TAG_LABELS_METADATA_KEY],
+	)
+	return [...new Set(labels.map((label) => label.trim()).filter(Boolean))]
 }
 
 function memoryLine(memory: BrainMemory): string {

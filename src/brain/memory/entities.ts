@@ -15,6 +15,7 @@ import {
 } from "../turn/brain-model"
 import { RESEARCH_MODEL } from "../turn/model-profile"
 import { listBrainDocuments } from "../../memory/documents"
+import { readStringArray } from "../../memory/memories"
 import { deleteStaleBrainMemoryDocument } from "./cleanup"
 import {
 	getBrainMemoryResetEpoch,
@@ -34,8 +35,8 @@ export type ResolvedEntity = {
 type EntityMeta = {
 	canonical?: string
 	domain?: string | null
-	aliases?: string[]
-	contacts?: string[]
+	aliases?: unknown
+	contacts?: unknown
 }
 
 function normalize(input: string): string {
@@ -64,7 +65,11 @@ function entityCustomId(
 }
 
 function matches(ref: string, meta: EntityMeta): boolean {
-	const haystack = [meta.canonical, meta.domain, ...(meta.aliases ?? [])]
+	const haystack = [
+		meta.canonical,
+		meta.domain,
+		...readStringArray(meta.aliases),
+	]
 		.filter(Boolean)
 		.map((v) => normalize(String(v)))
 	const stem = meta.domain ? normalize(meta.domain.split(".")[0] ?? "") : ""
@@ -94,8 +99,8 @@ async function findEntity(
 			return {
 				canonical: meta.canonical,
 				domain: meta.domain ?? null,
-				aliases: meta.aliases ?? [],
-				contacts: meta.contacts ?? [],
+				aliases: readStringArray(meta.aliases),
+				contacts: readStringArray(meta.contacts),
 				source: "brain",
 			}
 		}
@@ -130,7 +135,9 @@ async function resolveViaWeb(
 		return {
 			canonical,
 			domain: parsed.domain ? normalizeDomain(parsed.domain) : null,
-			aliases: (parsed.aliases ?? []).map((a) => a.trim()).filter(Boolean),
+			aliases: readStringArray(parsed.aliases)
+				.map((a) => a.trim())
+				.filter(Boolean),
 			contacts: [],
 			source: "web",
 		}

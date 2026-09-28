@@ -44,7 +44,7 @@ type ApiMemoryEntry = {
 const LIST_PAGE_SIZE = 100
 const BY_IDS_CHUNK = 100
 
-function readStringArray(value: unknown): string[] {
+export function readStringArray(value: unknown): string[] {
 	if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string")
 	if (typeof value === "string" && value.trim()) return value.split(",").map((v) => v.trim())
 	return []
