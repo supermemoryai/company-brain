@@ -25,6 +25,7 @@ import {
 	isOurSlackBotMessage,
 	originalRequestForConnectAcceptance,
 } from "../prompt/build"
+import { SLACK_SURFACE_CAPABILITIES } from "../surface"
 import { getCatalogEntry, isMcpCatalogSlug } from "../tools/mcp/catalog"
 import { startMcpConnect } from "../tools/mcp/connect"
 import {
@@ -2886,6 +2887,16 @@ async function runSlackTurnInner(
 			: fencedProgress(agent, turnControl, stream.progress),
 		interaction,
 		slackLookup,
+		surface: {
+			kind: "slack",
+			ref: {
+				kind: "slack",
+				tenantId: msg.teamId,
+				conversationId: channel,
+				threadId: threadTs,
+			},
+			capabilities: SLACK_SURFACE_CAPABILITIES,
+		},
 		mentionedSlackUserIds: mentionedSlackIds,
 		memoryTagSlackUserIds,
 		agentMainEffort: opts?.agentMainEffort,

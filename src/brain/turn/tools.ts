@@ -22,6 +22,7 @@ import type { SlackMember } from "../slack/client"
 import { isThreadTurnCurrent } from "../slack/turn-control"
 import type { SlackOrg } from "../slack/workspace"
 import { formatSlackOrgMemberDenial } from "../slack/workspace"
+import { type TurnSurfaceContext, surfaceToolGate } from "../surface"
 import { createForgetMemoriesTool } from "../tools/forget-memories"
 import { isMcpCatalogSlug } from "../tools/mcp/catalog"
 import { connectModeFor, getDirectoryEntryBySlug } from "../tools/mcp/directory"
@@ -75,6 +76,7 @@ export type AssembleTurnToolsArgs = {
 	directory?: SlackMember[]
 	threadHistory?: TurnThreadHistory
 	slackLookup?: SlackLookupContext
+	surface?: TurnSurfaceContext
 	askerSlackUserId?: string
 	mentionedSlackUserIds?: string[]
 	askerIsRestricted?: boolean
@@ -109,6 +111,7 @@ export type TurnToolAssemblySnapshot = {
 	directory?: SlackMember[]
 	threadHistory?: TurnThreadHistory
 	slackLookup?: SerializedSlackLookup
+	surface?: TurnSurfaceContext
 	askerSlackUserId?: string
 	mentionedSlackUserIds?: string[]
 	askerIsRestricted?: boolean
@@ -122,6 +125,7 @@ export function snapshotTurnToolAssembly(
 		| "directory"
 		| "threadHistory"
 		| "slackLookup"
+		| "surface"
 		| "askerSlackUserId"
 		| "mentionedSlackUserIds"
 		| "askerIsRestricted"
@@ -160,6 +164,7 @@ export function snapshotTurnToolAssembly(
 						: undefined,
 				}
 			: undefined,
+		...(args.surface ? { surface: args.surface } : {}),
 		askerSlackUserId: args.askerSlackUserId,
 		mentionedSlackUserIds: args.mentionedSlackUserIds
 			? [...args.mentionedSlackUserIds]
@@ -178,6 +183,7 @@ export function restoreTurnToolAssembly(
 	| "directory"
 	| "threadHistory"
 	| "slackLookup"
+	| "surface"
 	| "askerSlackUserId"
 	| "mentionedSlackUserIds"
 	| "askerIsRestricted"
@@ -207,6 +213,7 @@ export function restoreTurnToolAssembly(
 							: undefined,
 					}
 				: undefined,
+		...(snapshot.surface ? { surface: snapshot.surface } : {}),
 		askerSlackUserId: snapshot.askerSlackUserId,
 		mentionedSlackUserIds: snapshot.mentionedSlackUserIds
 			? [...snapshot.mentionedSlackUserIds]
@@ -574,7 +581,8 @@ export async function assembleTurnTools(
 			),
 		)
 	}
-	if (slackLookup) {
+	const surfaceGate = surfaceToolGate(args.surface)
+	if (slackLookup && surfaceGate.channelSearch) {
 		tools.search_slack_channel = deps.tool({
 			description:
 				"Search messages in one Slack channel, defaulting to the current channel, up to ~90 days back. Supports time-window summaries, related-message searches, likely open-action extraction, and finding previously shared links or files. The bot must be a member of the channel. Do not return content from another private channel in a channel response; private-channel answers must stay in that same private channel or a DM. Slack has no task system, so action status is inferred from message wording.",
@@ -887,6 +895,7 @@ export async function assembleTurnTools(
 			directory,
 			threadHistory,
 			slackLookup,
+			includePeopleDirectory: surfaceGate.peopleDirectory,
 			askerSlackUserId,
 			mentionedSlackUserIds,
 			memoryScope: slackLookup?.memoryScope,

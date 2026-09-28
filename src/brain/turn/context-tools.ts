@@ -41,6 +41,8 @@ export function createContextDiscoveryTools(args: {
 	directory: SlackMember[]
 	threadHistory?: TurnThreadHistory
 	slackLookup?: SlackLookupContext
+	/** Defaults to true; false drops inspect_people_directory. */
+	includePeopleDirectory?: boolean
 	askerSlackUserId?: string
 	mentionedSlackUserIds?: string[]
 	memoryScope?: SlackMemoryScope
@@ -56,6 +58,7 @@ export function createContextDiscoveryTools(args: {
 		directory,
 		threadHistory,
 		slackLookup,
+		includePeopleDirectory = true,
 		askerSlackUserId,
 		mentionedSlackUserIds = [],
 		memoryScope,
@@ -66,12 +69,9 @@ export function createContextDiscoveryTools(args: {
 	if (askerSlackUserId) knownSlackIds.add(askerSlackUserId)
 	for (const id of mentionedSlackUserIds) knownSlackIds.add(id)
 
-	const peopleDirectoryTools = createPeopleDirectoryTools({
-		deps,
-		env,
-		directory,
-		traceId,
-	})
+	const peopleDirectoryTools = includePeopleDirectory
+		? createPeopleDirectoryTools({ deps, env, directory, traceId })
+		: {}
 
 	const recall_tagged_memories = deps.tool({
 		description:

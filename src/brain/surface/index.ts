@@ -1,4 +1,11 @@
 export {
+	SLACK_SURFACE_CAPABILITIES,
+	type SurfaceCapabilities,
+	surfaceCapabilitiesOf,
+	surfaceToolGate,
+	type TurnSurfaceContext,
+} from "./capabilities"
+export {
 	type SurfaceAsker,
 	type SurfaceIdentity,
 	surfaceAskerFromSlack,
