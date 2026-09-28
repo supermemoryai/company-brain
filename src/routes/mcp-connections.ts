@@ -57,6 +57,7 @@ import {
 import { decryptToken } from "@/lib/crypto"
 import type { AppContext } from "@/types"
 import {
+	callbackSessionIsValid,
 	catalogConnectUrlIsValid,
 	directoryConnectUrlIsValid,
 } from "./mcp-connect-policy"
@@ -285,6 +286,22 @@ export const brainMcpConnectionsRoutes = new Hono<AppContext>()
 				.delete(mcpOAuthState)
 				.where(eq(mcpOAuthState.stateToken, state))
 			return c.json({ error: "invalid or expired state" }, 400)
+		}
+		if (
+			!callbackSessionIsValid(stateRow, {
+				userId: c.get("user")?.id ?? null,
+				orgId: c.get("org")?.id ?? null,
+				isOrgAdmin: canManageShared(c),
+			})
+		) {
+			// Drop the row so a leaked authorize link can't be retried.
+			await db(c.env)
+				.delete(mcpOAuthState)
+				.where(eq(mcpOAuthState.stateToken, state))
+			return c.json(
+				{ error: "sign in as the account that started this connect" },
+				401,
+			)
 		}
 		if (stateRow.runtime === "embedded") {
 			const consumed = await consumeGoogleOAuthState(c.env, state)
