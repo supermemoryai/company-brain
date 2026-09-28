@@ -33,3 +33,9 @@ MODEL_API_KEY=""
 # (1,000 credits a month). Set a key for more, or a context.dev key to use that.
 # FIRECRAWL_API_KEY=""
 # CONTEXT_DEV_API_KEY=""
+
+# Optional. When a tool result is about to be cut to a prefix, keep the lines
+# that answer the current question instead. One request per compaction. If the
+# key is missing or the call fails, the prefix cut stays. Memory search is
+# unchanged. Get a key at https://www.supercompress.dev/dashboard?signup=1
+# SUPERCOMPRESS_API_KEY=""

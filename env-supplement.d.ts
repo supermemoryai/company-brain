@@ -51,6 +51,12 @@ interface Env {
 	CONTEXT_DEV_API_KEY?: string
 	/** Optional Firecrawl key. Without one, web tools use its free keyless tier. */
 	FIRECRAWL_API_KEY?: string
+	/**
+	 * Optional. When set, one oversized tool result per compaction is query-kept
+	 * via SuperCompress instead of a prefix cut. Missing or failing calls keep
+	 * the prefix cut.
+	 */
+	SUPERCOMPRESS_API_KEY?: string
 }
 
 interface Env {

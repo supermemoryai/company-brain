@@ -32,10 +32,8 @@ import {
 } from "./approval-requests"
 import { reportLegacyStructuredReply, type TurnCapture } from "./capture-tools"
 import { cardOutputPayload } from "./card-content"
-import {
-	applySystemCacheBreakpoints,
-	compactMessagesAtBoundary,
-} from "./context"
+import { applySystemCacheBreakpoints } from "./context"
+import { compactMessagesForModel } from "./supercompress"
 import { getTurnDeps } from "./deps"
 import {
 	selectTurnReply,
@@ -376,8 +374,11 @@ export async function resumeTurnAfterApproval(
 						state: {
 							...approval.state,
 							memory: capture.memory,
-							messages: compactMessagesAtBoundary(messages, {
+							messages: await compactMessagesForModel(messages, {
 								activeDiscoveryApps: Object.keys(state.apps.discovered),
+								query: approval.state.question,
+								supercompressApiKey: env.SUPERCOMPRESS_API_KEY,
+								signal: abortSignal,
 							}),
 							approvalIds: [pending.request.approvalId],
 							connectedAppPause: pending.ref,
@@ -587,9 +588,12 @@ export async function resumeTurnAfterApproval(
 			return { reply: selected.reply }
 		}
 
-		const compactContinuation = (messages: ModelMessage[]): ModelMessage[] =>
-			compactMessagesAtBoundary(messages, {
+		const compactContinuation = (messages: ModelMessage[]) =>
+			compactMessagesForModel(messages, {
 				activeDiscoveryApps: Object.keys(state.apps.discovered),
+				query: approval.state.question,
+				supercompressApiKey: env.SUPERCOMPRESS_API_KEY,
+				signal: abortSignal,
 			})
 
 		let sourceMessages = messages
@@ -630,7 +634,7 @@ export async function resumeTurnAfterApproval(
 						)
 					}
 					const response = await result.response
-					sourceMessages = compactContinuation([
+					sourceMessages = await compactContinuation([
 						...sourceMessages,
 						...currentRunLiveUpdateMessages,
 						...response.messages,
@@ -677,7 +681,7 @@ export async function resumeTurnAfterApproval(
 					state: {
 						...approval.state,
 						memory: capture.memory,
-						messages: compactContinuation(conversation),
+						messages: await compactContinuation(conversation),
 						approvalIds: nextApprovals.map((item) => item.approvalId),
 						connectedAppPause: nextConnectedAppPause?.ref,
 						turnState: restoreTurnState(state),
@@ -695,6 +699,10 @@ export async function resumeTurnAfterApproval(
 				run: { result, messages: sourceMessages },
 				adapter: finalizationAdapter,
 				activeDiscoveryApps: Object.keys(state.apps.discovered),
+				supercompress: {
+					query: approval.state.question,
+					apiKey: env.SUPERCOMPRESS_API_KEY,
+				},
 				coordination: approval.state.turnControl
 					? {
 							agent,

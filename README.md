@@ -126,6 +126,16 @@ Everything else works the same on both, including Code Mode: when the brain writ
 
 To use the built-in container on Workers Paid, uncomment the **Workers Paid** block in `wrangler.jsonc`, set `CONTAINER_SANDBOX` to `"on"`, and redeploy.
 
+### Optional: keep the useful part of a tool dump
+
+Tool results that no longer fit are cut to a prefix. Set `SUPERCOMPRESS_API_KEY` and that cut, for the single largest dump in the turn, keeps the lines that answer the current question instead of the opening slice. The question itself is not compressed. The call is skipped when the key is unset, and any failure falls back to the prefix cut. Memory, permissions, and supermemory search are untouched. One extra request per compaction, so it stays inside the free plan's outbound-call budget.
+
+```sh
+wrangler secret put SUPERCOMPRESS_API_KEY
+```
+
+Get a key at [supercompress.dev](https://www.supercompress.dev/dashboard?signup=1).
+
 ---
 
 ## Local development
