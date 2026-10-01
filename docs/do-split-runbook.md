@@ -36,7 +36,7 @@ to `main`, so merging first would point it at a worker that does not exist yet.
 Secrets are per Worker script; nothing is inherited from `supermemory`. Until this
 runs, the brain has none and fails on its first model call.
 
-`wrangler.brain.jsonc` declares the 50 the brain actually needs (the 13 dropped are
+`wrangler.brain.jsonc` declares the 50 secrets the brain actually needs (the 13 dropped are
 Stripe, Autumn, Plain, Composio and other HTTP-route concerns it never runs, plus
 `DATABASE_URL`, which it reaches through the `HYPERDRIVE` binding). Push the values
 from the committed dotenvx `.env.production` (same source as `bun run deploy`):
