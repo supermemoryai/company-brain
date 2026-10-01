@@ -82,7 +82,7 @@ Do **not** use the dashboard's "Install App" button. Installation happens throug
 ## Troubleshooting
 
 - **Request URL verification fails**: API not running, tunnel down, or `SLACK_SIGNING_SECRET` mismatch. The events route returns 401 before the handshake if the signature is wrong.
-- **Bot never replies**: check the ngrok console. No requests means Slack cannot reach you (tunnel down, or request URLs still have the placeholder). Requests with 401 means signing secret mismatch. Requests with 200 but silence, read `.logs/workflow.log`; a missing AI Gateway token fails the turn.
+- **Bot never replies**: check the ngrok console. No requests means Slack cannot reach you (tunnel down, or request URLs still have the placeholder). Requests with 401 mean signing secret mismatch. Requests with 200 but silence, read `.logs/workflow.log`; a missing AI Gateway token fails the turn.
 - **OAuth install errors**: the redirect URL in the Slack app must be exactly `https://api.dev.supermemory.ai/brain/slack/oauth/callback`, and the install must start from the web app (`/brain`), signed in as an org admin.
 - **Portless serves the wrong app**: a stale workerd is squatting the port. Kill old `wrangler`/`workerd` processes and restart `bun run dev`. Testing with `curl localhost` is misleading (IPv6 vs IPv4), use the full hostname.
 - **Fresh checkout misbehaves**: run `bun install` before `bun dev`.
