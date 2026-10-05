@@ -122,13 +122,33 @@ export function splitSlackMarkdown(
  */
 export function toSlackMrkdwn(text: string): string {
 	const normalized = normalizeTextPreservingCodeFences(text)
+	// Inline code spans are left as written: `__init__` is not bold.
 	const inline = (s: string): string =>
 		s
-			.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "<$2|$1>")
-			.replace(/\*\*([^*\n]+)\*\*/g, "*$1*")
-			.replace(/__([^_\n]+)__/g, "*$1*")
+			.split(/(`[^`\n]+`)/)
+			.map((part, i) =>
+				i % 2 === 1
+					? part
+					: part
+							.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "<$2|$1>")
+							.replace(/\*\*([^*\n]+)\*\*/g, "*$1*")
+							.replace(/__([^_\n]+)__/g, "*$1*"),
+			)
+			.join("")
 	const out: string[] = []
+	let inFence = false
 	for (const line of normalized.split("\n")) {
+		// Slack renders ``` blocks too; their lines (`# comment`, `---`,
+		// `| pipes |`) are code, not markdown to convert.
+		if (/^\s*```/.test(line)) {
+			inFence = !inFence
+			out.push(line)
+			continue
+		}
+		if (inFence) {
+			out.push(line)
+			continue
+		}
 		if (/^\s*([-*_])\1{2,}\s*$/.test(line)) continue
 		const header = line.match(/^#{1,6}\s+(.+?)\s*$/)
 		if (header?.[1]) {
