@@ -51,7 +51,7 @@ export type ScheduledTaskPayload = {
 	runTrigger?: "scheduled" | "run_now"
 }
 
-import { derivedScheduleFields } from "./schedule-derive"
+import { derivedScheduleFields, scheduledRunMemoryScope } from "./schedule-derive"
 
 export { cronToCadence, derivedScheduleFields } from "./schedule-derive"
 
@@ -385,13 +385,7 @@ async function runScheduledTaskInner(
 		runTrigger: payload.runTrigger ?? "scheduled",
 	}
 
-	// DM digests post to the owner's DM, so scope reads to that DM surface;
-	// otherwise the run resolves as a public channel and search_slack_channels
-	// rejects the owner's private-channel reads. Channel digests keep their scope.
-	const memoryScope: SlackMemoryScope | undefined =
-		dm && payload.creatorSlackUserId
-			? { kind: "dm", channelId: target, userId: payload.creatorSlackUserId }
-			: payload.memoryScope
+	const memoryScope = scheduledRunMemoryScope(payload, dm, target)
 
 	// Alarms outlive the trial: block spend once entitlement lapses.
 	if (
